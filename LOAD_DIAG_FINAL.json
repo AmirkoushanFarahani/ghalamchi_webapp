@@ -1,0 +1,1056 @@
+{
+  "stages": [
+    {
+      "virtual_users": 100,
+      "elapsed_seconds": 35.47,
+      "requests": 2502,
+      "rps": 70.54,
+      "successful_rps": 70.54,
+      "average_seconds": 0.13,
+      "status_counts": {
+        "200": 2271,
+        "201": 231
+      },
+      "error_percent": 0.0,
+      "p50_seconds": 0.094,
+      "p95_seconds": 0.343,
+      "p99_seconds": 0.5,
+      "max_seconds": 0.953,
+      "peak_inflight": 46,
+      "client_event_loop_lag_p95": 0.003,
+      "readiness_after": 200,
+      "per_path": {
+        "/expenses": {
+          "requests": 237,
+          "p95_seconds": 0.234
+        },
+        "/invoices": {
+          "requests": 249,
+          "p95_seconds": 0.562
+        },
+        "/parties": {
+          "requests": 265,
+          "p95_seconds": 0.25
+        },
+        "/dashboard": {
+          "requests": 514,
+          "p95_seconds": 0.281
+        },
+        "WRITE_DRAFT": {
+          "requests": 231,
+          "p95_seconds": 0.297
+        },
+        "/reports/trial-balance": {
+          "requests": 247,
+          "p95_seconds": 0.25
+        },
+        "/auth/me": {
+          "requests": 237,
+          "p95_seconds": 0.219
+        },
+        "/reports/customers": {
+          "requests": 253,
+          "p95_seconds": 0.407
+        },
+        "/products": {
+          "requests": 269,
+          "p95_seconds": 0.234
+        }
+      },
+      "resources": [
+        {
+          "BlockIO": "0B / 0B",
+          "CPUPerc": "32.51%",
+          "Container": "azari-load-backend",
+          "ID": "ea18388439f7",
+          "MemPerc": "16.34%",
+          "MemUsage": "167.3MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "775kB / 440kB",
+          "PIDs": "38"
+        },
+        {
+          "BlockIO": "88.4MB / 7.06MB",
+          "CPUPerc": "15.45%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "6.21%",
+          "MemUsage": "63.62MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "16MB / 34.2MB",
+          "PIDs": "9"
+        },
+        {
+          "BlockIO": "9.85MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "10.17%",
+          "MemUsage": "13.02MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "2.37kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "0B / 0B",
+          "CPUPerc": "92.76%",
+          "Container": "azari-load-backend",
+          "ID": "ea18388439f7",
+          "MemPerc": "16.69%",
+          "MemUsage": "170.9MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "5.98MB / 3.47MB",
+          "PIDs": "50"
+        },
+        {
+          "BlockIO": "88.4MB / 7.39MB",
+          "CPUPerc": "54.40%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "8.96%",
+          "MemUsage": "91.75MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "18MB / 38.5MB",
+          "PIDs": "21"
+        },
+        {
+          "BlockIO": "9.85MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "10.17%",
+          "MemUsage": "13.02MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "2.37kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "0B / 0B",
+          "CPUPerc": "115.35%",
+          "Container": "azari-load-backend",
+          "ID": "ea18388439f7",
+          "MemPerc": "16.75%",
+          "MemUsage": "171.5MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "10.7MB / 6.2MB",
+          "PIDs": "50"
+        },
+        {
+          "BlockIO": "88.4MB / 7.88MB",
+          "CPUPerc": "55.76%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "8.70%",
+          "MemUsage": "89.09MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "20.6MB / 44.1MB",
+          "PIDs": "18"
+        },
+        {
+          "BlockIO": "9.85MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "10.17%",
+          "MemUsage": "13.02MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "2.37kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "0B / 0B",
+          "CPUPerc": "113.41%",
+          "Container": "azari-load-backend",
+          "ID": "ea18388439f7",
+          "MemPerc": "16.88%",
+          "MemUsage": "172.8MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "17.2MB / 9.95MB",
+          "PIDs": "50"
+        },
+        {
+          "BlockIO": "88.7MB / 9.69MB",
+          "CPUPerc": "51.96%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "8.53%",
+          "MemUsage": "87.38MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "23.4MB / 50.3MB",
+          "PIDs": "19"
+        },
+        {
+          "BlockIO": "9.85MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "10.17%",
+          "MemUsage": "13.02MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "2.37kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "0B / 0B",
+          "CPUPerc": "113.15%",
+          "Container": "azari-load-backend",
+          "ID": "ea18388439f7",
+          "MemPerc": "16.83%",
+          "MemUsage": "172.3MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "22.9MB / 13.3MB",
+          "PIDs": "50"
+        },
+        {
+          "BlockIO": "88.7MB / 11.2MB",
+          "CPUPerc": "58.35%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "7.01%",
+          "MemUsage": "71.75MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "25.9MB / 55.7MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "9.85MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "10.17%",
+          "MemUsage": "13.02MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "2.37kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "0B / 0B",
+          "CPUPerc": "99.02%",
+          "Container": "azari-load-backend",
+          "ID": "ea18388439f7",
+          "MemPerc": "16.89%",
+          "MemUsage": "173MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "28.4MB / 16.5MB",
+          "PIDs": "50"
+        },
+        {
+          "BlockIO": "88.7MB / 12.4MB",
+          "CPUPerc": "73.53%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "7.00%",
+          "MemUsage": "71.73MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "27.9MB / 59.9MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "9.85MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "10.17%",
+          "MemUsage": "13.02MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "2.37kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "0B / 0B",
+          "CPUPerc": "0.28%",
+          "Container": "azari-load-backend",
+          "ID": "ea18388439f7",
+          "MemPerc": "16.90%",
+          "MemUsage": "173.1MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "31.5MB / 18.4MB",
+          "PIDs": "50"
+        },
+        {
+          "BlockIO": "88.8MB / 13.3MB",
+          "CPUPerc": "0.12%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "6.86%",
+          "MemUsage": "70.25MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "29.7MB / 63.9MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "9.85MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "10.17%",
+          "MemUsage": "13.02MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "2.37kB / 126B",
+          "PIDs": "17"
+        }
+      ],
+      "diagnostics": [
+        {
+          "checkout": 1,
+          "queries": 1,
+          "query_seconds": 0.00022911199994268827,
+          "checkin": 1,
+          "max_hold_seconds": 0,
+          "admitted_sessions": 0,
+          "pool": "Pool size: 5  Connections in pool: 1 Current Overflow: -4 Current Checked out connections: 0",
+          "borrowed_threads": 0,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "serve/_serve/main_loop/sleep": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "_run_coro": 1
+          },
+          "pg": "active|||3\nidle|Client|ClientRead|1\n"
+        },
+        {
+          "checkout": 75,
+          "queries": 582,
+          "query_seconds": 0.5089788580030472,
+          "checkin": 75,
+          "max_hold_seconds": 0,
+          "admitted_sessions": 0,
+          "pool": "Pool size: 5  Connections in pool: 4 Current Overflow: -1 Current Checked out connections: 0",
+          "borrowed_threads": 0,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 4,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro": 2,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 2,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "serve/_serve/main_loop/sleep": 1
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|3\nidle in transaction|Client|ClientRead|1\n"
+        },
+        {
+          "checkout": 246,
+          "queries": 2073,
+          "query_seconds": 6.5821399419999125,
+          "checkin": 246,
+          "max_hold_seconds": 0,
+          "admitted_sessions": 0,
+          "pool": "Pool size: 5  Connections in pool: 5 Current Overflow: 0 Current Checked out connections: 0",
+          "borrowed_threads": 0,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 13,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "serve/_serve/main_loop/sleep": 1
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|2\nidle in transaction|Client|ClientRead|3\n"
+        },
+        {
+          "checkout": 448,
+          "queries": 3668,
+          "query_seconds": 14.489344737999318,
+          "checkin": 437,
+          "max_hold_seconds": 0.44746880599996075,
+          "admitted_sessions": 15,
+          "pool": "Pool size: 5  Connections in pool: 3 Current Overflow: 9 Current Checked out connections: 11",
+          "borrowed_threads": 15,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_start_query/_start_query/_exec_command": 2,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/party_payments/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 3,
+            "_bootstrap/_bootstrap_inner/run/dashboard/dashboard/cash_flow/posted_payments/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get/wait": 6,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_credit_balance/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "_run_coro": 4,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 20,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 4,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 4,
+            "serve/_serve/main_loop/sleep": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 1
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|5\nidle in transaction|Client|ClientRead|10\n"
+        },
+        {
+          "checkout": 657,
+          "queries": 5258,
+          "query_seconds": 23.21777959299584,
+          "checkin": 647,
+          "max_hold_seconds": 0.17723165799998242,
+          "admitted_sessions": 11,
+          "pool": "Pool size: 5  Connections in pool: 4 Current Overflow: 9 Current Checked out connections: 10",
+          "borrowed_threads": 8,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 10,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_credit_balance/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 2,
+            "_bootstrap/_bootstrap_inner/run/dashboard/dashboard/cash_flow/posted_payments/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 3,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2,
+            "serve/_serve/main_loop/sleep": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__call__": 3,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 7,
+            "_run_coro": 2,
+            "run_asgi": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__call__/sender/sender/send_no_error/send/wait/wait": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 1
+          },
+          "pg": "active|||2\nidle|Client|ClientRead|3\nidle in transaction|Client|ClientRead|3\n"
+        },
+        {
+          "checkout": 869,
+          "queries": 7011,
+          "query_seconds": 33.158795769996914,
+          "checkin": 855,
+          "max_hold_seconds": 0.16706195699998716,
+          "admitted_sessions": 15,
+          "pool": "Pool size: 5  Connections in pool: 1 Current Overflow: 10 Current Checked out connections: 14",
+          "borrowed_threads": 12,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/list_parties/list/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 2,
+            "_bootstrap/_bootstrap_inner/run/get/wait": 4,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 2,
+            "_bootstrap/_bootstrap_inner/run/close/_close_impl/close/_go/close/close/_do_close/_close_impl/_connection_rollback_impl/_rollback_impl/do_rollback/rollback/wait/_rollback_gen/_exec_command": 2,
+            "_bootstrap/_bootstrap_inner/run/create_invoice/create_invoice/_flush/flush/_flush/execute/execute/save_obj/_emit_insert_statements/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_credit_balance/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_start_query/_start_query/_exec_command": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 4,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/checkpoint/sleep/__sleep0": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 5,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 17,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 3,
+            "serve/_serve/main_loop/sleep": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 2,
+            "_run_coro": 2,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__call__/sender/sender/send_no_error/send/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/checkpoint/sleep/__sleep0": 1
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|4\nidle in transaction|Client|ClientRead|11\n"
+        },
+        {
+          "checkout": 1081,
+          "queries": 8720,
+          "query_seconds": 42.30701239899713,
+          "checkin": 1069,
+          "max_hold_seconds": 0.12260218300002634,
+          "admitted_sessions": 14,
+          "pool": "Pool size: 5  Connections in pool: 3 Current Overflow: 10 Current Checked out connections: 12",
+          "borrowed_threads": 12,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get/wait": 8,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 3,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_credit_balance/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 2,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "run_asgi": 3,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 12,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 5,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 2,
+            "serve/_serve/main_loop/sleep": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread/checkpoint/sleep/__sleep0": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 2,
+            "_run_coro": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 1
+          },
+          "pg": "active|||2\nidle|Client|ClientRead|5\nidle in transaction|Client|ClientRead|8\n"
+        },
+        {
+          "checkout": 1280,
+          "queries": 10341,
+          "query_seconds": 53.91711177200159,
+          "checkin": 1266,
+          "max_hold_seconds": 0.5400872570000956,
+          "admitted_sessions": 15,
+          "pool": "Pool size: 5  Connections in pool: 1 Current Overflow: 10 Current Checked out connections: 14",
+          "borrowed_threads": 14,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 2,
+            "_bootstrap/_bootstrap_inner/run/dashboard/dashboard/cash_flow/posted_payments/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_start_query/_start_query/_exec_command": 1,
+            "_bootstrap/_bootstrap_inner/run/dashboard/dashboard/receivables/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/load_on_pk_identity/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context": 1,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 5,
+            "_bootstrap/_bootstrap_inner/run/list_invoices/list/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/close/_close_impl/close/_go/close/close/_do_close/_close_impl/_connection_rollback_impl/_rollback_impl/do_rollback/rollback/wait/_rollback_gen/maintain_gen/_deallocate/_exec_command": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_credit_balance/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 27,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 14,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 5,
+            "serve/_serve/main_loop/sleep": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 2,
+            "_run_coro": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread/checkpoint/sleep/__sleep0": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 2
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|2\nidle in transaction|Client|ClientRead|13\n"
+        },
+        {
+          "checkout": 1463,
+          "queries": 11989,
+          "query_seconds": 71.80413040299936,
+          "checkin": 1460,
+          "max_hold_seconds": 0.10280385400005798,
+          "admitted_sessions": 4,
+          "pool": "Pool size: 5  Connections in pool: 2 Current Overflow: 0 Current Checked out connections: 3",
+          "borrowed_threads": 2,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get/wait": 13,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro": 4,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 4,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 5,
+            "serve/_serve/main_loop/sleep": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/checkpoint/sleep/__sleep0": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/body": 1
+          },
+          "pg": "active|IO|WALSync|1\nactive|||1\nidle|Client|ClientRead|4\nidle in transaction|Client|ClientRead|7\n"
+        },
+        {
+          "checkout": 1672,
+          "queries": 13741,
+          "query_seconds": 85.6538464240025,
+          "checkin": 1659,
+          "max_hold_seconds": 0.522385389999954,
+          "admitted_sessions": 15,
+          "pool": "Pool size: 5  Connections in pool: 2 Current Overflow: 10 Current Checked out connections: 13",
+          "borrowed_threads": 14,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_credit_balance/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 3,
+            "_bootstrap/_bootstrap_inner/run/dashboard/dashboard/income_statement/_activity/account_activity/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/party_payments/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen/_execute_send": 2,
+            "_bootstrap/_bootstrap_inner/run/get/wait": 4,
+            "_bootstrap/_bootstrap_inner/run/close/_close_impl/close/_go/close/close/_do_close/_close_impl/_connection_rollback_impl/_rollback_impl/do_rollback/rollback/wait/_rollback_gen/maintain_gen/_deallocate/_exec_command": 1,
+            "_bootstrap/_bootstrap_inner/run/create_invoice/create_invoice/_commit/commit/commit/_go/commit/commit/_do_commit/_connection_commit_impl/_commit_impl/do_commit/commit/wait/_commit_gen/_exec_command": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 14,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 7,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 1,
+            "serve/_serve/main_loop/sleep": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 2,
+            "run_asgi": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 1,
+            "_run_coro": 1
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|4\nidle in transaction|Client|ClientRead|11\n"
+        },
+        {
+          "checkout": 1871,
+          "queries": 15448,
+          "query_seconds": 101.30228367100267,
+          "checkin": 1858,
+          "max_hold_seconds": 0.10356766199993217,
+          "admitted_sessions": 15,
+          "pool": "Pool size: 5  Connections in pool: 1 Current Overflow: 10 Current Checked out connections: 14",
+          "borrowed_threads": 15,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 2,
+            "_bootstrap/_bootstrap_inner/run/create_invoice/create_invoice/_commit/commit/commit/_go/commit/_prepare_impl/_go/_prepare_impl/flush/_flush/execute/execute/save_obj/_emit_insert_statements/execute": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_credit_balance/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/dashboard/dashboard/income_statement/_activity/account_activity/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/customers/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 2,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/_connection_for_bind/_connection_for_bind/_go/_connection_for_bind/connect/__init__/raw_connection/connect/_checkout/_do_ping_w_event/do_ping/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/close/_close_impl/close/_go/close/close/_do_close/_close_impl/_connection_rollback_impl/_rollback_impl/do_rollback/rollback/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_start_query/_start_query/_exec_command": 1,
+            "_bootstrap/_bootstrap_inner/run/create_invoice/create_invoice/_flush/flush/_flush/execute/execute/save_obj/_emit_insert_statements/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/dashboard/dashboard/cash_flow/posted_bill_payments/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 3,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 15,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 3,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "serve/_serve/main_loop/sleep": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 6,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro": 1
+          },
+          "pg": "active|IO|WALSync|1\nactive|||1\nidle|Client|ClientRead|4\nidle in transaction|Client|ClientRead|10\n"
+        },
+        {
+          "checkout": 2070,
+          "queries": 17140,
+          "query_seconds": 116.71024430700345,
+          "checkin": 2057,
+          "max_hold_seconds": 0.2490878480000447,
+          "admitted_sessions": 15,
+          "pool": "Pool size: 5  Connections in pool: 2 Current Overflow: 10 Current Checked out connections: 13",
+          "borrowed_threads": 12,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 5,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_accounting_invoices/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 2,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 2,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 2,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 3,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen/_execute_send": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 15,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 33,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/checkpoint/sleep/__sleep0": 1,
+            "_run_coro": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 5,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 2,
+            "serve/_serve/main_loop/sleep": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 3,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/checkpoint/sleep/__sleep0": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 1
+          },
+          "pg": "active|||2\nidle|Client|ClientRead|4\nidle in transaction|Client|ClientRead|10\n"
+        },
+        {
+          "checkout": 2275,
+          "queries": 18836,
+          "query_seconds": 125.98725359300488,
+          "checkin": 2261,
+          "max_hold_seconds": 0.2642272950001825,
+          "admitted_sessions": 15,
+          "pool": "Pool size: 5  Connections in pool: 0 Current Overflow: 10 Current Checked out connections: 15",
+          "borrowed_threads": 15,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/close/_close_impl/close/_go/close/close/_do_close/_close_impl/_connection_rollback_impl/_rollback_impl/do_rollback/rollback/wait/_rollback_gen/_exec_command": 5,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_accounting_invoices/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get/wait": 3,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 2,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 1,
+            "_bootstrap/_bootstrap_inner/run/dashboard/dashboard/cash_flow/posted_payments/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/_connection_for_bind/_connection_for_bind/_go/_connection_for_bind/connect/__init__/raw_connection/connect/_checkout/_do_ping_w_event/do_ping/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 10,
+            "serve/_serve/main_loop/sleep": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 5,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 5,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 2,
+            "_run_coro": 1
+          },
+          "pg": "active|||2\nidle|Client|ClientRead|6\nidle in transaction|Client|ClientRead|4\n"
+        },
+        {
+          "checkout": 2485,
+          "queries": 20470,
+          "query_seconds": 136.02215849399977,
+          "checkin": 2480,
+          "max_hold_seconds": 0.12456337999992684,
+          "admitted_sessions": 10,
+          "pool": "Pool size: 5  Connections in pool: 5 Current Overflow: 6 Current Checked out connections: 6",
+          "borrowed_threads": 9,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 10,
+            "_bootstrap/_bootstrap_inner/run/create_invoice/create_invoice/_flush/flush/_flush/execute/execute/save_obj/_emit_insert_statements/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/_connection_for_bind/_connection_for_bind/_go/_connection_for_bind/connect/__init__/raw_connection/connect/_checkout/_do_ping_w_event/do_ping/execute/wait": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/party_payments/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_credit_balance/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 4,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 7,
+            "_run_coro": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "serve/_serve/main_loop/sleep": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|4\nidle in transaction|Client|ClientRead|2\n"
+        },
+        {
+          "checkout": 2695,
+          "queries": 22219,
+          "query_seconds": 147.37740800499205,
+          "checkin": 2685,
+          "max_hold_seconds": 0.22916910499998266,
+          "admitted_sessions": 10,
+          "pool": "Pool size: 5  Connections in pool: 3 Current Overflow: 8 Current Checked out connections: 10",
+          "borrowed_threads": 10,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/party_payments/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 2,
+            "_bootstrap/_bootstrap_inner/run/get/wait": 6,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 2,
+            "_bootstrap/_bootstrap_inner/run/dashboard/dashboard/receivables/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/load_on_pk_identity/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context": 1,
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_accounting_invoices/scalars/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/close/_close_impl/close/_go/close/close/_do_close/_close_impl/_connection_rollback_impl/_rollback_impl/do_rollback/rollback/wait/_rollback_gen/_exec_command": 1,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 9,
+            "serve/_serve/main_loop/sleep": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "_run_coro": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 1
+          },
+          "pg": "active|||2\nidle|Client|ClientRead|4\nidle in transaction|Client|ClientRead|10\n"
+        },
+        {
+          "checkout": 2734,
+          "queries": 22589,
+          "query_seconds": 150.38937157799296,
+          "checkin": 2734,
+          "max_hold_seconds": 0,
+          "admitted_sessions": 0,
+          "pool": "Pool size: 5  Connections in pool: 5 Current Overflow: 0 Current Checked out connections: 0",
+          "borrowed_threads": 0,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 15,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "serve/_serve/main_loop/sleep": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|5\n"
+        },
+        {
+          "checkout": 2734,
+          "queries": 22589,
+          "query_seconds": 150.38937157799296,
+          "checkin": 2734,
+          "max_hold_seconds": 0,
+          "admitted_sessions": 0,
+          "pool": "Pool size: 5  Connections in pool: 5 Current Overflow: 0 Current Checked out connections: 0",
+          "borrowed_threads": 0,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 15,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "serve/_serve/main_loop/sleep": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|5\n"
+        }
+      ]
+    },
+    {
+      "virtual_users": 250,
+      "elapsed_seconds": 7.52,
+      "requests": 536,
+      "rps": 71.31,
+      "successful_rps": 65.46,
+      "average_seconds": 0.7,
+      "status_counts": {
+        "200": 448,
+        "201": 44,
+        "503": 44
+      },
+      "error_percent": 8.21,
+      "p50_seconds": 0.766,
+      "p95_seconds": 1.218,
+      "p99_seconds": 1.281,
+      "max_seconds": 1.422,
+      "peak_inflight": 155,
+      "client_event_loop_lag_p95": 0.003,
+      "readiness_after": 200,
+      "per_path": {
+        "/expenses": {
+          "requests": 49,
+          "p95_seconds": 1.125
+        },
+        "/invoices": {
+          "requests": 47,
+          "p95_seconds": 1.188
+        },
+        "/parties": {
+          "requests": 60,
+          "p95_seconds": 1.11
+        },
+        "/dashboard": {
+          "requests": 99,
+          "p95_seconds": 1.187
+        },
+        "WRITE_DRAFT": {
+          "requests": 50,
+          "p95_seconds": 1.235
+        },
+        "/reports/trial-balance": {
+          "requests": 51,
+          "p95_seconds": 1.188
+        },
+        "/auth/me": {
+          "requests": 59,
+          "p95_seconds": 1.125
+        },
+        "/reports/customers": {
+          "requests": 56,
+          "p95_seconds": 1.281
+        },
+        "/products": {
+          "requests": 65,
+          "p95_seconds": 1.14
+        }
+      },
+      "resources": [
+        {
+          "BlockIO": "0B / 0B",
+          "CPUPerc": "111.57%",
+          "Container": "azari-load-backend",
+          "ID": "ea18388439f7",
+          "MemPerc": "16.86%",
+          "MemUsage": "172.6MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "33.2MB / 19.3MB",
+          "PIDs": "50"
+        },
+        {
+          "BlockIO": "88.8MB / 14MB",
+          "CPUPerc": "55.02%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "9.63%",
+          "MemUsage": "98.62MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "30.4MB / 65.5MB",
+          "PIDs": "21"
+        },
+        {
+          "BlockIO": "9.85MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "10.17%",
+          "MemUsage": "13.02MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "2.37kB / 126B",
+          "PIDs": "17"
+        }
+      ],
+      "diagnostics": [
+        {
+          "checkout": 2735,
+          "queries": 22590,
+          "query_seconds": 150.38961205599298,
+          "checkin": 2735,
+          "max_hold_seconds": 0,
+          "admitted_sessions": 0,
+          "pool": "Pool size: 5  Connections in pool: 5 Current Overflow: 0 Current Checked out connections: 0",
+          "borrowed_threads": 0,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 15,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "serve/_serve/main_loop/sleep": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1
+          },
+          "pg": "active|||2\nidle|Client|ClientRead|4\n"
+        },
+        {
+          "checkout": 2890,
+          "queries": 23816,
+          "query_seconds": 158.44319258399105,
+          "checkin": 2876,
+          "max_hold_seconds": 0.3973063230000662,
+          "admitted_sessions": 15,
+          "pool": "Pool size: 5  Connections in pool: 1 Current Overflow: 10 Current Checked out connections: 14",
+          "borrowed_threads": 13,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 5,
+            "_bootstrap/_bootstrap_inner/run/get/wait": 4,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 4,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 22,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 38,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 4,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 7,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__call__/sender/sender/send_no_error/send/wait/wait": 1,
+            "serve/_serve/main_loop/sleep": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 1,
+            "_run_coro": 2,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__call__": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1
+          },
+          "pg": "active|||3\nidle|Client|ClientRead|3\nidle in transaction|Client|ClientRead|10\n"
+        },
+        {
+          "checkout": 3087,
+          "queries": 25357,
+          "query_seconds": 176.03295661899256,
+          "checkin": 3075,
+          "max_hold_seconds": 0.18699461899996095,
+          "admitted_sessions": 15,
+          "pool": "Pool size: 5  Connections in pool: 3 Current Overflow: 10 Current Checked out connections: 12",
+          "borrowed_threads": 14,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/customer_summaries/customers/_customer_summary/customer_credit_balance/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/scalar/_only_one_row/_fetchone_impl/chunks/invoke/_load_for_path/_load_via_parent/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement": 6,
+            "_bootstrap/_bootstrap_inner/run/get/wait": 5,
+            "_bootstrap/_bootstrap_inner/run/validate/validate_python/__get__/get/_fire_loader_callables/_load_for_state/_emit_lazyload/execute/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait/_execute_gen/_maybe_prepare_gen/_execute_send": 1,
+            "_bootstrap/_bootstrap_inner/run/get_current_user/get_by_id/scalar/_execute_internal/orm_execute_statement/execute/_execute_on_connection/_execute_clauseelement/_execute_context/_exec_single_context/do_execute/execute/wait": 1,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 14,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/wait/wait": 128,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/_solve_generator/enter_async_context/__aenter__": 102,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/__aexit__": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/run_endpoint_function/run_in_threadpool/run_sync/run_sync_in_worker_thread": 2,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/solve_dependencies/solve_dependencies/run_in_threadpool/run_sync/run_sync_in_worker_thread": 8,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread": 1,
+            "serve/_serve/main_loop/sleep": 1,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/__aexit__/__aexit__": 2,
+            "_run_coro": 3,
+            "_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle/_handle_selected/handle/handle/_handle_selected/handle/app/wrapped_app/app/app/serialize_response/run_in_threadpool/run_sync/run_sync_in_worker_thread/__aenter__/acquire/acquire_on_behalf_of/cancel_shielded_checkpoint/sleep/__sleep0": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "run_asgi": 2
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|3\nidle in transaction|Client|ClientRead|12\n"
+        },
+        {
+          "checkout": 3271,
+          "queries": 26685,
+          "query_seconds": 191.0542206259936,
+          "checkin": 3271,
+          "max_hold_seconds": 0,
+          "admitted_sessions": 0,
+          "pool": "Pool size: 5  Connections in pool: 5 Current Overflow: 0 Current Checked out connections: 0",
+          "borrowed_threads": 0,
+          "thread_limit": 40,
+          "threads": {
+            "_bootstrap/_bootstrap_inner/run/get/wait": 15,
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+            "serve/_serve/main_loop/sleep": 1
+          },
+          "pg": "active|||1\nidle|Client|ClientRead|5\n"
+        }
+      ]
+    }
+  ]
+}

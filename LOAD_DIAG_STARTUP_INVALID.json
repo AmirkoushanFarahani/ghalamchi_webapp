@@ -1,0 +1,121 @@
+{
+  "stages": [
+    {
+      "virtual_users": 100,
+      "elapsed_seconds": 5.12,
+      "requests": 50,
+      "rps": 9.76,
+      "successful_rps": 0.0,
+      "average_seconds": 0.002,
+      "status_counts": {
+        "RemoteProtocolError": 50
+      },
+      "error_percent": 100.0,
+      "p50_seconds": 0.0,
+      "p95_seconds": 0.015,
+      "p99_seconds": 0.016,
+      "max_seconds": 0.016,
+      "peak_inflight": 3,
+      "client_event_loop_lag_p95": 0.018,
+      "readiness_after": 200,
+      "per_path": {
+        "/expenses": {
+          "requests": 7,
+          "p95_seconds": 0.0
+        },
+        "/invoices": {
+          "requests": 7,
+          "p95_seconds": 0.0
+        },
+        "/dashboard": {
+          "requests": 8,
+          "p95_seconds": 0.0
+        },
+        "/parties": {
+          "requests": 5,
+          "p95_seconds": 0.0
+        },
+        "WRITE_DRAFT": {
+          "requests": 4,
+          "p95_seconds": 0.0
+        },
+        "/reports/trial-balance": {
+          "requests": 4,
+          "p95_seconds": 0.0
+        },
+        "/auth/me": {
+          "requests": 7,
+          "p95_seconds": 0.0
+        },
+        "/reports/customers": {
+          "requests": 3,
+          "p95_seconds": 0.0
+        },
+        "/products": {
+          "requests": 5,
+          "p95_seconds": 0.0
+        }
+      },
+      "resources": [
+        {
+          "BlockIO": "15.6MB / 0B",
+          "CPUPerc": "111.66%",
+          "Container": "azari-load-backend",
+          "ID": "47a275248548",
+          "MemPerc": "13.38%",
+          "MemUsage": "137MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "4.73kB / 2.92kB",
+          "PIDs": "31"
+        },
+        {
+          "BlockIO": "70.5MB / 455kB",
+          "CPUPerc": "0.07%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "4.14%",
+          "MemUsage": "42.39MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "156kB / 381kB",
+          "PIDs": "6"
+        },
+        {
+          "BlockIO": "9.85MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "10.17%",
+          "MemUsage": "13.02MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "2.11kB / 126B",
+          "PIDs": "17"
+        }
+      ],
+      "diagnostics": [
+        {
+          "probe": "unavailable"
+        },
+        {
+          "probe": "unavailable"
+        },
+        {
+          "max_hold_seconds": 0,
+          "admitted_sessions": 0,
+          "pool": "Pool size: 5  Connections in pool: 0 Current Overflow: -5 Current Checked out connections: 0",
+          "borrowed_threads": 0,
+          "thread_limit": 40,
+          "threads": {
+            "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+          },
+          "await_chains": {
+            "_run_coro": 1,
+            "serve/_serve/main_loop/sleep": 1,
+            "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+            "run_asgi/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1
+          },
+          "pg": "active|||1\n"
+        }
+      ]
+    }
+  ]
+}

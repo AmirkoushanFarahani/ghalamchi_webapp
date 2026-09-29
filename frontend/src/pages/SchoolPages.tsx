@@ -19,7 +19,9 @@ import { todayIso } from "../utils/date";
 import type {
   Course,
   DiscountCode,
+  ExamPlan,
   EnrollmentPayment,
+  RegistrationFees,
   Student,
 } from "../types/api";
 
@@ -37,6 +39,21 @@ export const grades = [
   ["GRADE_11", "متوسطه دوم · کلاس یازدهم"],
   ["GRADE_12", "متوسطه دوم · کلاس دوازدهم"],
 ] as const;
+
+const academicTrackLabels: Record<string, string> = {
+  MATHEMATICS_PHYSICS: "ریاضی فیزیک",
+  EXPERIMENTAL: "تجربی",
+  HUMANITIES: "انسانی",
+  RELIGIOUS_STUDIES: "علوم و معارف اسلامی",
+  ART: "هنر",
+  LANGUAGES: "منحصراً زبان",
+  ELECTROTECHNICS: "الکتروتکنیک",
+  PHYSICAL_EDUCATION: "تربیت بدنی",
+  ACCOUNTING: "حسابداری",
+  COMPUTER_NETWORK_SOFTWARE: "شبکه و نرم‌افزار رایانه",
+  AUTOMOTIVE_MECHANICS: "مکانیک خودرو",
+};
+
 const gradeName = (value: string) =>
   grades.find(([key]) => key === value)?.[1] ?? value;
 const methodName: Record<string, string> = {
@@ -49,8 +66,11 @@ const methodName: Record<string, string> = {
 export function CoursesPage() {
   const { can } = useAuth();
   const [open, setOpen] = useState(false);
+  const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [editingExamPlan, setEditingExamPlan] = useState<ExamPlan | null>(null);
   const [discount, setDiscount] = useState(false);
   const courses = useAsync(() => api.get<Course[]>("/school/courses"), []);
+  const examPlans = useAsync(() => api.get<ExamPlan[]>("/school/exam-plans"), []);
   const discounts = useAsync(
     () =>
       can("school:manage")
@@ -62,7 +82,7 @@ export function CoursesPage() {
     <>
       <PageHeader
         title="دوره‌ها و شهریه‌ها"
-        description="مدیر مدرسه دوره‌های هر پایه، قیمت و کدهای تخفیف را تعریف می‌کند."
+        description={can("school:manage") ? "مدیر مدرسه دوره‌های هر پایه، قیمت و کدهای تخفیف را تعریف می‌کند." : "تعرفه‌ها فقط برای مشاهده هستند. برای ثبت‌نام، طرح مناسب پایه و رشته دانش‌آموز را انتخاب کنید."}
         action={
           can("school:manage") && (
             <div className="button-row">
@@ -95,6 +115,7 @@ export function CoursesPage() {
                 <th>پایه</th>
                 <th>شهریه</th>
                 <th>وضعیت</th>
+                {can("school:manage") && <th>عملیات</th>}
               </tr>
             </thead>
             <tbody>
@@ -110,6 +131,16 @@ export function CoursesPage() {
                       value={course.is_active ? "ACTIVE" : "INACTIVE"}
                     />
                   </td>
+                  {can("school:manage") && (
+                    <td>
+                      <button
+                        className="button button--secondary button--small"
+                        onClick={() => setEditingCourse(course)}
+                      >
+                        ویرایش
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -121,6 +152,11 @@ export function CoursesPage() {
           detail="مدیر باید ابتدا برای هر پایه دوره و شهریه ثبت کند."
         />
       )}
+      <section className="card">
+        <h2 className="card-title">طرح‌های آزمون و بن کتاب</h2>
+        <p className="form-description">کاتالوگ قیمت بر اساس پایه و رشته دانش‌آموز است. مسئول ثبت‌نام فقط طرح مناسب را انتخاب می‌کند و امکان تغییر مبلغ ندارد.</p>
+        {examPlans.loading ? <LoadingState /> : examPlans.error ? <ErrorState message={examPlans.error} retry={examPlans.reload} /> : <div className="table-wrap"><table><thead><tr><th>پایه / رشته</th><th>طرح</th><th>تعداد آزمون</th><th>هر آزمون</th><th>مبلغ آزمون</th><th>بن کتاب</th><th>تخفیف بن</th><th>وضعیت</th>{can("school:manage") && <th>عملیات</th>}</tr></thead><tbody>{examPlans.data?.map((plan) => <tr key={plan.id}><td>{gradeName(plan.grade)}{plan.academic_track ? ` · ${academicTrackLabels[plan.academic_track] ?? plan.academic_track}` : ""}</td><td dir="ltr">{plan.plan_code}</td><td>{plan.exam_count}</td><td><Money value={plan.exam_unit_price} /></td><td><Money value={plan.exam_total} /></td><td><Money value={plan.book_voucher_amount} /></td><td><Money value={plan.book_voucher_discount} /></td><td><StatusBadge value={plan.is_active ? "ACTIVE" : "INACTIVE"} /></td>{can("school:manage") && <td><button className="button button--secondary button--small" onClick={() => setEditingExamPlan(plan)}>ویرایش</button></td>}</tr>)}</tbody></table></div>}
+      </section>
       {can("school:manage") && (
         <section className="card">
           <h2 className="card-title">کدهای تخفیف</h2>
@@ -170,6 +206,26 @@ export function CoursesPage() {
           }}
         />
       )}{" "}
+      {editingCourse && (
+        <CourseForm
+          course={editingCourse}
+          close={() => setEditingCourse(null)}
+          saved={() => {
+            setEditingCourse(null);
+            void courses.reload();
+          }}
+        />
+      )}
+      {editingExamPlan && (
+        <ExamPlanForm
+          plan={editingExamPlan}
+          close={() => setEditingExamPlan(null)}
+          saved={() => {
+            setEditingExamPlan(null);
+            void examPlans.reload();
+          }}
+        />
+      )}
       {discount && (
         <DiscountForm
           close={() => setDiscount(false)}
@@ -184,13 +240,16 @@ export function CoursesPage() {
 }
 
 function CourseForm({
+  course,
   close,
   saved,
 }: {
+  course?: Course;
   close: () => void;
   saved: () => void;
 }) {
-  const [price, setPrice] = useState("");
+  const [price, setPrice] = useState(String(course?.price ?? ""));
+  const [grade, setGrade] = useState(course?.grade ?? "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -199,11 +258,15 @@ function CourseForm({
     setBusy(true);
     setError("");
     try {
-      await api.post("/school/courses", {
-        name: f.get("name"),
-        grade: f.get("grade"),
+      const data = {
+        name: String(f.get("name")),
+        instructor_name: String(f.get("instructor_name")) || null,
+        grade,
         price,
-      });
+        ...(course ? { is_active: f.has("is_active") } : {}),
+      };
+      if (course) await api.patch(`/school/courses/${course.id}`, data);
+      else await api.post("/school/courses", data);
       saved();
     } catch (reason) {
       setError(
@@ -214,23 +277,117 @@ function CourseForm({
     }
   }
   return (
-    <Modal open title="دوره جدید" onClose={close}>
+    <Modal open title={course ? "ویرایش دوره" : "دوره جدید"} onClose={close}>
       <form className="form" onSubmit={submit}>
         {error && <p className="alert alert--error">{error}</p>}
         <Field label="نام دوره">
-          <input name="name" required placeholder="مثلاً ریاضی تقویتی" />
+          <input name="name" required defaultValue={course?.name} placeholder="مثلاً ریاضی تقویتی" />
         </Field>
-        <GradeField />
+        <Field label="نام دبیر (اختیاری)">
+          <input name="instructor_name" defaultValue={course?.instructor_name ?? ""} placeholder="مثلاً خانم احمدی" />
+        </Field>
+        <GradeField value={grade} onChange={setGrade} />
         <Field label="شهریه (ریال)">
           <MoneyInput value={price} onValueChange={setPrice} required min="0" />
         </Field>
-        <button className="button button--primary" disabled={busy}>
-          {busy ? "در حال ثبت…" : "ثبت دوره"}
-        </button>
+        {course && <label className="check"><input name="is_active" type="checkbox" defaultChecked={course.is_active} /> دوره فعال است</label>}
+        <div className="form-actions">
+          <button type="button" className="button button--secondary" onClick={close} disabled={busy}>انصراف</button>
+          <button className="button button--primary" disabled={busy}>
+            {busy ? "در حال ذخیره…" : course ? "ذخیره تغییرات" : "ثبت دوره"}
+          </button>
+        </div>
       </form>
     </Modal>
   );
 }
+function ExamPlanForm({
+  plan,
+  close,
+  saved,
+}: {
+  plan: ExamPlan;
+  close: () => void;
+  saved: () => void;
+}) {
+  const [grade, setGrade] = useState(plan.grade);
+  const [track, setTrack] = useState(plan.academic_track ?? "");
+  const [unitPrice, setUnitPrice] = useState(String(plan.exam_unit_price));
+  const [examTotal, setExamTotal] = useState(String(plan.exam_total));
+  const [voucherAmount, setVoucherAmount] = useState(String(plan.book_voucher_amount));
+  const [voucherDiscount, setVoucherDiscount] = useState(String(plan.book_voucher_discount));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setBusy(true);
+    setError("");
+    try {
+      await api.patch(`/school/exam-plans/${plan.id}`, {
+        grade,
+        academic_track: track || null,
+        plan_code: String(form.get("plan_code")),
+        exam_count: Number(form.get("exam_count")),
+        exam_unit_price: unitPrice || "0",
+        exam_total: examTotal || "0",
+        book_voucher_amount: voucherAmount || "0",
+        book_voucher_discount: voucherDiscount || "0",
+        is_active: form.has("is_active"),
+      });
+      saved();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "ذخیره طرح آزمون ناموفق بود.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open title="ویرایش طرح آزمون و بن کتاب" onClose={close}>
+      <form className="form" onSubmit={submit}>
+        {error && <p className="alert alert--error">{error}</p>}
+        <p className="form-description">این تغییر فقط برای ثبت‌نام‌های جدید اعمال می‌شود؛ مبالغ ثبت‌شده در پرونده دانش‌آموزان قبلی تغییر نمی‌کند.</p>
+        <div className="form-grid">
+          <GradeField value={grade} onChange={(value) => setGrade(value as ExamPlan["grade"])} />
+          <Field label="رشته تحصیلی">
+            <select value={track} onChange={(event) => setTrack(event.target.value)}>
+              <option value="">بدون رشته</option>
+              {Object.entries(academicTrackLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </select>
+          </Field>
+          <Field label="کد طرح">
+            <input name="plan_code" dir="ltr" defaultValue={plan.plan_code} required />
+          </Field>
+          <Field label="تعداد آزمون">
+            <input name="exam_count" type="number" min="1" defaultValue={plan.exam_count} required />
+          </Field>
+        </div>
+        <div className="form-grid form-grid--2">
+          <Field label="مبلغ هر آزمون (ریال)">
+            <MoneyInput value={unitPrice} onValueChange={setUnitPrice} min="0" required />
+          </Field>
+          <Field label="مبلغ کل آزمون‌ها (ریال)">
+            <MoneyInput value={examTotal} onValueChange={setExamTotal} min="0" required />
+          </Field>
+          <Field label="مبلغ بن کتاب (ریال)">
+            <MoneyInput value={voucherAmount} onValueChange={setVoucherAmount} min="0" required />
+          </Field>
+          <Field label="تخفیف بن کتاب (ریال)">
+            <MoneyInput value={voucherDiscount} onValueChange={setVoucherDiscount} min="0" required />
+          </Field>
+        </div>
+        <label className="check"><input name="is_active" type="checkbox" defaultChecked={plan.is_active} /> طرح فعال است</label>
+        <div className="form-actions">
+          <button type="button" className="button button--secondary" onClick={close} disabled={busy}>انصراف</button>
+          <button className="button button--primary" disabled={busy}>{busy ? "در حال ذخیره…" : "ذخیره تغییرات"}</button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function DiscountForm({
   close,
   saved,
@@ -289,6 +446,57 @@ function DiscountForm({
         <button className="button button--primary" disabled={busy}>
           {busy ? "در حال ثبت…" : "ثبت کد"}
         </button>
+      </form>
+    </Modal>
+  );
+}
+
+function RegistrationFeesForm({
+  fees,
+  close,
+  saved,
+}: {
+  fees: RegistrationFees;
+  close: () => void;
+  saved: () => void;
+}) {
+  const [bookPrice, setBookPrice] = useState(String(fees.book_price));
+  const [examPrice, setExamPrice] = useState(String(fees.exam_price));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await api.put("/school/registration-fees", {
+        book_price: bookPrice || "0",
+        exam_price: examPrice || "0",
+      });
+      saved();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "ذخیره قیمت‌ها ناموفق بود.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal open title="قیمت خدمات ثبت‌نام" onClose={close}>
+      <form className="form" onSubmit={submit}>
+        {error && <p className="alert alert--error">{error}</p>}
+        <p className="form-description">
+          فقط مدیر قیمت کتاب و ثبت‌نام آزمون را تعیین می‌کند. مسئول ثبت‌نام فقط انتخاب می‌کند که دانش‌آموز هر مورد را می‌خواهد یا نه.
+        </p>
+        <Field label="قیمت کتاب (ریال)">
+          <MoneyInput value={bookPrice} onValueChange={setBookPrice} min="0" required />
+        </Field>
+        <Field label="قیمت ثبت‌نام آزمون (ریال)">
+          <MoneyInput value={examPrice} onValueChange={setExamPrice} min="0" required />
+        </Field>
+        <div className="form-actions">
+          <button type="button" className="button button--secondary" onClick={close} disabled={busy}>انصراف</button>
+          <button className="button button--primary" disabled={busy}>{busy ? "در حال ذخیره…" : "ذخیره قیمت‌ها"}</button>
+        </div>
       </form>
     </Modal>
   );
@@ -389,7 +597,7 @@ export function StudentsPage() {
         />
       )}
       {open && (
-        <StudentRegistrationForm
+        <FourSectionStudentRegistrationForm
           close={() => setOpen(false)}
           saved={() => {
             setOpen(false);
@@ -399,6 +607,178 @@ export function StudentsPage() {
       )}
     </>
   );
+}
+
+function FourSectionStudentRegistrationForm({
+  close,
+  saved,
+}: {
+  close: () => void;
+  saved: () => void;
+}) {
+  const [birthDate, setBirthDate] = useState("");
+  const [registrationDate, setRegistrationDate] = useState(todayIso());
+  const [grade, setGrade] = useState("");
+  const [academicTrack, setAcademicTrack] = useState("");
+  const [bookIncluded, setBookIncluded] = useState(false);
+  const [examIncluded, setExamIncluded] = useState(false);
+  const [examPlanId, setExamPlanId] = useState("");
+  const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
+  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHECK" | "INSTALLMENT">("CASH");
+  const [installmentCount, setInstallmentCount] = useState(1);
+  const [firstInstallmentDate, setFirstInstallmentDate] = useState(todayIso());
+  const [checkDueDate, setCheckDueDate] = useState(todayIso());
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const courses = useAsync(() => api.get<Course[]>("/school/courses"), []);
+  const examPlans = useAsync(() => api.get<ExamPlan[]>("/school/exam-plans"), []);
+  const availableCourses = useMemo(
+    () => courses.data?.filter((course) => course.grade === grade && course.is_active) ?? [],
+    [courses.data, grade],
+  );
+  const chosenCourses = availableCourses.filter((course) => selectedCourses.includes(course.id));
+  const classTotal = chosenCourses.reduce((sum, course) => sum + Number(course.price), 0);
+  const availableExamPlans = examPlans.data?.filter(
+    (plan) => plan.is_active && plan.grade === grade && plan.academic_track === (academicTrack || null),
+  ) ?? [];
+  const selectedExamPlan = availableExamPlans.find((plan) => plan.id === examPlanId);
+  const bookPrice = bookIncluded && selectedExamPlan
+    ? Number(selectedExamPlan.book_voucher_amount) - Number(selectedExamPlan.book_voucher_discount)
+    : 0;
+  const examPrice = examIncluded ? Number(selectedExamPlan?.exam_total ?? 0) : 0;
+  const total = classTotal + bookPrice + examPrice;
+  const needsAcademicTrack = ["GRADE_10", "GRADE_11", "GRADE_12"].includes(grade);
+  const schedule = useMemo(() => buildInstallmentSchedule(total, installmentCount, firstInstallmentDate), [total, installmentCount, firstInstallmentDate]);
+
+  function toggleCourse(courseId: string) {
+    setSelectedCourses((current) => current.includes(courseId) ? current.filter((id) => id !== courseId) : [...current, courseId]);
+  }
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    const form = new FormData(event.currentTarget);
+    const firstName = String(form.get("first_name") ?? "").trim();
+    const lastName = String(form.get("last_name") ?? "").trim();
+    const missing: string[] = [];
+    if (!firstName) missing.push("نام");
+    if (!lastName) missing.push("نام خانوادگی");
+    if (!String(form.get("national_id") ?? "").trim()) missing.push("کد ملی");
+    if (!birthDate) missing.push("تاریخ تولد");
+    if (!grade) missing.push("پایه تحصیلی");
+    if (needsAcademicTrack && !academicTrack) missing.push("رشته تحصیلی");
+    if ((examIncluded || bookIncluded) && !examPlanId) missing.push("طرح آزمون");
+    if (!String(form.get("guardian_full_name") ?? "").trim()) missing.push("نام ولی");
+    if (!String(form.get("guardian_phone") ?? "").trim()) missing.push("تلفن ولی");
+    if (missing.length) {
+      setError(`لطفاً این موارد را تکمیل کنید: ${missing.join("، ")}`);
+      return;
+    }
+    const payments = total <= 0 ? [] : paymentMethod === "INSTALLMENT"
+      ? schedule.map((item) => ({ amount: item.amount, method: "INSTALLMENT", due_date: item.due_date, tracking_code: null, sayad_id: null }))
+      : [{ amount: total.toFixed(2), method: paymentMethod, due_date: paymentMethod === "CHECK" ? checkDueDate : null, tracking_code: String(form.get("tracking_code") || "") || null, sayad_id: paymentMethod === "CHECK" ? String(form.get("sayad_id") || "") || null : null }];
+    setBusy(true);
+    setError("");
+    try {
+      await api.post("/school/students/enroll", {
+        full_name: `${firstName} ${lastName}`.trim(),
+        national_id: form.get("national_id"),
+        student_phone: form.get("student_phone") || null,
+        birth_date: birthDate,
+        registration_date: registrationDate,
+        grade,
+        academic_track: academicTrack || null,
+        book_voucher_eligible: bookIncluded,
+        exam_registered: examIncluded,
+        exam_plan_id: examPlanId || null,
+        guardian_full_name: form.get("guardian_full_name"),
+        guardian_phone: form.get("guardian_phone"),
+        address: form.get("address") || null,
+        previous_school: form.get("previous_school") || null,
+        emergency_contact: form.get("emergency_contact") || null,
+        notes: form.get("notes") || null,
+        course_ids: selectedCourses,
+        discount_code: form.get("discount_code") || null,
+        payments,
+      });
+      saved();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "ثبت‌نام ناموفق بود.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open wide title="ثبت‌نام دانش‌آموز" onClose={close}>
+      <form className="form" onSubmit={submit} noValidate>
+        {error && <p className="alert alert--error">{error}</p>}
+        <section className="card">
+          <h2 className="card-title">۱. اطلاعات دانش‌آموز</h2>
+          <div className="form-grid form-grid--3">
+            <Field label="نام"><input name="first_name" required disabled={busy} /></Field>
+            <Field label="نام خانوادگی"><input name="last_name" required disabled={busy} /></Field>
+            <Field label="کد ملی"><input name="national_id" dir="ltr" required disabled={busy} /></Field>
+            <Field label="تلفن دانش‌آموز (اختیاری)"><input name="student_phone" dir="ltr" disabled={busy} /></Field>
+            <DateField label="تاریخ تولد" value={birthDate} onChange={setBirthDate} required />
+            <DateField label="تاریخ ثبت‌نام" value={registrationDate} onChange={setRegistrationDate} required />
+            <GradeField value={grade} onChange={(value) => { setGrade(value); setSelectedCourses([]); setAcademicTrack(""); setExamPlanId(""); }} />
+            {needsAcademicTrack && <Field label="رشته تحصیلی"><select value={academicTrack} onChange={(event) => { setAcademicTrack(event.target.value); setExamPlanId(""); }} required disabled={busy}><option value="">انتخاب رشته</option>{Array.from(new Set((examPlans.data ?? []).filter((plan) => plan.grade === grade && plan.academic_track).map((plan) => plan.academic_track as string))).map((track) => <option key={track} value={track}>{academicTrackLabels[track] ?? track}</option>)}</select></Field>}
+            <Field label="نام ولی"><input name="guardian_full_name" required disabled={busy} /></Field>
+            <Field label="تلفن ولی"><input name="guardian_phone" dir="ltr" required disabled={busy} /></Field>
+          </div>
+          <div className="form-grid form-grid--2">
+            <Field label="مدرسه قبلی (اختیاری)"><input name="previous_school" disabled={busy} /></Field>
+            <Field label="تماس اضطراری (اختیاری)"><input name="emergency_contact" disabled={busy} /></Field>
+          </div>
+          <Field label="نشانی (اختیاری)"><textarea name="address" disabled={busy} /></Field>
+          <Field label="توضیحات (اختیاری)"><textarea name="notes" disabled={busy} /></Field>
+        </section>
+
+        <section className="card">
+          <h2 className="card-title">۲. آزمون و کتاب</h2>
+          {examPlans.loading ? <LoadingState /> : examPlans.error ? <ErrorState message={examPlans.error} retry={examPlans.reload} /> : <><Field label="طرح آزمون و بن کتاب"><select value={examPlanId} onChange={(event) => setExamPlanId(event.target.value)} disabled={busy || !grade || (needsAcademicTrack && !academicTrack)}><option value="">انتخاب طرح</option>{availableExamPlans.map((plan) => <option key={plan.id} value={plan.id}>طرح {plan.plan_code} · {plan.exam_count} آزمون · مبلغ آزمون {Number(plan.exam_total).toLocaleString("en-US")} ریال</option>)}</select></Field>{grade && !needsAcademicTrack && !availableExamPlans.length && <p className="alert alert--warning">برای این پایه طرح آزمون پیش‌فرض وجود ندارد.</p>}<div className="form-grid form-grid--2">
+            <label className="course-choice"><input type="checkbox" checked={examIncluded} onChange={(event) => setExamIncluded(event.target.checked)} disabled={busy || !examPlanId} /><span><strong>ثبت‌نام آزمون</strong><small>مبلغ طرح انتخاب‌شده</small></span><Money value={examPrice} /></label>
+            <label className="course-choice"><input type="checkbox" checked={bookIncluded} onChange={(event) => setBookIncluded(event.target.checked)} disabled={busy || !examPlanId} /><span><strong>شامل بن کتاب</strong><small>{selectedExamPlan ? `بن ${Number(selectedExamPlan.book_voucher_amount).toLocaleString("en-US")} − تخفیف ${Number(selectedExamPlan.book_voucher_discount).toLocaleString("en-US")}` : "ابتدا طرح را انتخاب کنید"}</small></span><Money value={bookPrice} /></label>
+          </div></>}
+        </section>
+
+        <section className="card">
+          <h2 className="card-title">۳. کلاس‌ها</h2>
+          {!grade ? <p className="form-description">ابتدا پایه تحصیلی دانش‌آموز را انتخاب کنید.</p> : courses.loading ? <LoadingState /> : availableCourses.length ? <div className="course-picker">{availableCourses.map((course) => <label key={course.id} className="course-choice"><input type="checkbox" checked={selectedCourses.includes(course.id)} onChange={() => toggleCourse(course.id)} disabled={busy} /><span><strong>{course.name}</strong>{course.instructor_name && <small>دبیر: {course.instructor_name}</small>}</span><Money value={course.price} /></label>)}</div> : <p className="alert alert--warning">برای این پایه، کلاسی توسط مدیر تعریف نشده است.</p>}
+          <Field label="کد تخفیف (اختیاری)"><input name="discount_code" dir="ltr" placeholder="کد را وارد کنید" disabled={busy} /></Field>
+          <div className="detail-grid"><p>جمع کلاس‌ها: <Money value={classTotal} /></p><p>آزمون: <Money value={examPrice} /></p><p>کتاب: <Money value={bookPrice} /></p><p><strong>جمع فاکتور پیش از تخفیف: <Money value={total} /></strong></p></div>
+        </section>
+
+        <section className="card">
+          <h2 className="card-title">۴. پرداخت</h2>
+          <Field label="روش پرداخت"><select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as typeof paymentMethod)} disabled={busy}><option value="CASH">نقدی</option><option value="BANK_TRANSFER">انتقال بانکی</option><option value="CHECK">چک</option><option value="INSTALLMENT">اقساطی</option></select></Field>
+          {paymentMethod === "INSTALLMENT" && <><Field label="تعداد اقساط"><input type="number" min="1" max="60" value={installmentCount} onChange={(event) => setInstallmentCount(Math.max(1, Math.min(60, Number(event.target.value) || 1)))} required disabled={busy} /></Field><DateField label="تاریخ سررسید قسط اول" value={firstInstallmentDate} onChange={setFirstInstallmentDate} required /><div className="table-wrap"><table><thead><tr><th>قسط</th><th>مبلغ</th><th>سررسید</th></tr></thead><tbody>{schedule.map((item, index) => <tr key={item.due_date}><td>{index + 1}</td><td><Money value={item.amount} /></td><td><DateText value={item.due_date} /></td></tr>)}</tbody></table></div></>}
+          {paymentMethod === "CHECK" && <><DateField label="تاریخ سررسید چک" value={checkDueDate} onChange={setCheckDueDate} required /><Field label="شناسه صیادی (اختیاری)"><input name="sayad_id" dir="ltr" maxLength={32} disabled={busy} /></Field></>}
+          {(paymentMethod === "CASH" || paymentMethod === "BANK_TRANSFER" || paymentMethod === "CHECK") && <><Field label="کد پیگیری (اختیاری)"><input name="tracking_code" dir="ltr" maxLength={100} disabled={busy} /></Field><p className="allocation-total">مبلغ پرداخت: <Money value={total} /></p></>}
+        </section>
+        {error && <p className="alert alert--error">{error}</p>}
+        <button className="button button--primary" disabled={busy}>{busy ? "در حال ذخیره…" : "ثبت‌نام و صدور فاکتور"}</button>
+      </form>
+    </Modal>
+  );
+}
+
+function buildInstallmentSchedule(total: number, count: number, firstDueDate: string): Array<{ amount: string; due_date: string }> {
+  const safeCount = Math.max(1, Math.min(60, count || 1));
+  const totalCents = Math.max(0, Math.round(total * 100));
+  const base = Math.floor(totalCents / safeCount);
+  const remainder = totalCents % safeCount;
+  return Array.from({ length: safeCount }, (_, index) => ({
+    amount: ((base + (index < remainder ? 1 : 0)) / 100).toFixed(2),
+    due_date: addMonthsToIso(firstDueDate, index),
+  }));
+}
+
+function addMonthsToIso(isoDate: string, months: number): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  if (!year || !month || !day) return todayIso();
+  return new Date(Date.UTC(year, month - 1 + months, day)).toISOString().slice(0, 10);
 }
 
 function StudentRegistrationForm({

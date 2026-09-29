@@ -4,7 +4,9 @@ import { CoursesPage, StudentsPage } from "./pages/SchoolPages";
 import { StudentDetailPage } from "./pages/StudentDetailPage";
 import { StudentRecordsPage } from "./pages/StudentRecordsPage";
 import { SchoolAccountingPage } from "./pages/SchoolAccountingPage";
+import { SchoolCashBankPage, SchoolReportPage, SchoolTuitionPage } from "./pages/SchoolAccountingDetailsPages";
 import { SchoolCostsPage } from "./pages/SchoolCostsPage";
+import { DuePaymentsPage, OutstandingTuitionPage, ReceivedTuitionPage, RegisteredTuitionPage } from "./pages/TuitionDetailsPages";
 import { useAuth } from "./auth/AuthContext";
 import { LoadingState } from "./components/ui";
 import { AppLayout } from "./layouts/AppLayout";
@@ -26,7 +28,14 @@ export const routes: Route[] = [
   { path: "/students/", component: StudentDetailPage, permission: "school:read", prefix: true },
   { path: "/courses", component: CoursesPage, permission: "school:read" },
   { path: "/school-accounting", component: SchoolAccountingPage, permission: "school:manage" },
+  { path: "/school-accounting/tuition", component: SchoolTuitionPage, permission: "school:manage" },
+  { path: "/school-accounting/cash-bank", component: SchoolCashBankPage, permission: "school:manage" },
+  { path: "/school-accounting/reports", component: SchoolReportPage, permission: "school:manage" },
   { path: "/school-costs", component: SchoolCostsPage, permission: "school:manage" },
+  { path: "/tuition/registered", component: RegisteredTuitionPage, permission: "school:read" },
+  { path: "/tuition/received", component: ReceivedTuitionPage, permission: "school:read" },
+  { path: "/tuition/outstanding", component: OutstandingTuitionPage, permission: "school:read" },
+  { path: "/tuition/due-payments", component: DuePaymentsPage, permission: "school:read" },
   { path: "/expenses", component: ExpensesPage, permission: "bills:read" },
   { path: "/dashboard", component: DashboardPage, permission: "reports:read" }, { path: "/customers", component: CustomersPage, permission: "reports:read" }, { path: "/parties", component: PartiesPage, permission: "parties:read" }, { path: "/products", component: ProductsPage, permission: "products:read" }, { path: "/accounts", component: AccountsPage, permission: "accounts:read" }, { path: "/periods", component: PeriodsPage, permission: "periods:read" }, { path: "/journals", component: JournalsPage, permission: "journals:read" }, { path: "/invoices", component: InvoicesPage, permission: "invoices:read" }, { path: "/payments", component: PaymentsPage, permission: "payments:read" },
   { path: "/bills", component: BillsPage, permission: "bills:read" }, { path: "/bill-payments", component: BillPaymentsPage, permission: "bill_payments:read" },

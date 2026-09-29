@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
@@ -12,18 +12,24 @@ from backend.app.db.models import (
     EnrollmentPayment,
     SchoolCost,
     SchoolCourse,
+    SchoolExamPlan,
+    SchoolRegistrationFees,
     Student,
     StudentEnrollment,
     User,
 )
 from backend.app.schemas.school import (
     CourseCreate,
+    CourseUpdate,
     DiscountCodeCreate,
+    ExamPlanUpdate,
     EnrollmentPaymentCreate,
     PaymentStatusUpdate,
+    RegistrationFeesUpdate,
     SchoolCostCreate,
     StudentEnrollmentCreate,
 )
+from backend.app.services.school_exam_catalog import DEFAULT_EXAM_CATALOG, PLAN_CODES, decimal
 
 
 class SchoolError(ValueError):
@@ -65,6 +71,27 @@ class SchoolService:
             ) from exc
         return course
 
+    def update_course(self, course_id: UUID, data: CourseUpdate) -> SchoolCourse:
+        course = self.session.scalar(
+            select(SchoolCourse).where(
+                SchoolCourse.id == course_id,
+                SchoolCourse.workspace_owner_id == self.workspace_owner_id,
+            )
+        )
+        if course is None:
+            raise SchoolError("Course was not found")
+
+        for field, value in data.model_dump().items():
+            setattr(course, field, value)
+        try:
+            self.session.commit()
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise SchoolConflictError(
+                "A course with this name already exists for this grade"
+            ) from exc
+        return course
+
     def list_discounts(self) -> list[DiscountCode]:
         return list(
             self.session.scalars(
@@ -83,6 +110,68 @@ class SchoolService:
             self.session.rollback()
             raise SchoolConflictError("This discount code already exists") from exc
         return code
+
+    def registration_fees(self) -> tuple[Decimal, Decimal]:
+        fees = self.session.scalar(
+            select(SchoolRegistrationFees).where(
+                SchoolRegistrationFees.workspace_owner_id == self.workspace_owner_id
+            )
+        )
+        if fees is None:
+            return Decimal("0"), Decimal("0")
+        return fees.book_price, fees.exam_price
+
+    def update_registration_fees(self, data: RegistrationFeesUpdate) -> SchoolRegistrationFees:
+        fees = self.session.scalar(
+            select(SchoolRegistrationFees).where(
+                SchoolRegistrationFees.workspace_owner_id == self.workspace_owner_id
+            )
+        )
+        if fees is None:
+            fees = SchoolRegistrationFees(workspace_owner_id=self.workspace_owner_id)
+            self.session.add(fees)
+        fees.book_price = data.book_price
+        fees.exam_price = data.exam_price
+        self.session.commit()
+        return fees
+
+    def list_exam_plans(self, grade: str | None = None) -> list[SchoolExamPlan]:
+        self._ensure_default_exam_plans()
+        query = select(SchoolExamPlan).where(
+            SchoolExamPlan.workspace_owner_id == self.workspace_owner_id
+        )
+        if grade is not None:
+            query = query.where(SchoolExamPlan.grade == grade)
+        return list(
+            self.session.scalars(
+                query.order_by(
+                    SchoolExamPlan.grade,
+                    SchoolExamPlan.academic_track,
+                    SchoolExamPlan.plan_code,
+                )
+            )
+        )
+
+    def update_exam_plan(self, plan_id: UUID, data: ExamPlanUpdate) -> SchoolExamPlan:
+        plan = self.session.scalar(
+            select(SchoolExamPlan).where(
+                SchoolExamPlan.id == plan_id,
+                SchoolExamPlan.workspace_owner_id == self.workspace_owner_id,
+            )
+        )
+        if plan is None:
+            raise SchoolError("Exam plan was not found")
+
+        for field, value in data.model_dump().items():
+            setattr(plan, field, value)
+        try:
+            self.session.commit()
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise SchoolConflictError(
+                "An exam plan with this grade, major, and plan code already exists"
+            ) from exc
+        return plan
 
     def list_students(self) -> list[Student]:
         students = list(
@@ -111,10 +200,13 @@ class SchoolService:
         )
 
     def create_cost(self, data: SchoolCostCreate) -> SchoolCost:
+        values = data.model_dump()
+        supplied_number = values.pop("factor_number")
         cost = SchoolCost(
             workspace_owner_id=self.workspace_owner_id,
             created_by_id=self.actor.id,
-            **data.model_dump(),
+            factor_number=(supplied_number or f"COST-{date.today():%Y%m%d}-{uuid4().hex[:8].upper()}"),
+            **values,
         )
         self.session.add(cost)
         try:
@@ -137,14 +229,18 @@ class SchoolService:
 
     def create_enrollment(self, data: StudentEnrollmentCreate) -> Student:
         course_ids = list(dict.fromkeys(data.course_ids))
-        courses = list(
-            self.session.scalars(
-                select(SchoolCourse).where(
-                    SchoolCourse.workspace_owner_id == self.workspace_owner_id,
-                    SchoolCourse.id.in_(course_ids),
-                    SchoolCourse.is_active.is_(True),
+        courses = (
+            list(
+                self.session.scalars(
+                    select(SchoolCourse).where(
+                        SchoolCourse.workspace_owner_id == self.workspace_owner_id,
+                        SchoolCourse.id.in_(course_ids),
+                        SchoolCourse.is_active.is_(True),
+                    )
                 )
             )
+            if course_ids
+            else []
         )
         if len(courses) != len(course_ids):
             raise SchoolError("One or more selected courses are unavailable")
@@ -152,7 +248,16 @@ class SchoolService:
             raise SchoolError("Every selected course must match the student's grade")
 
         discount = self._resolve_discount(data.discount_code)
-        subtotal = sum((course.price for course in courses), Decimal("0"))
+        exam_plan = self._resolve_exam_plan(data)
+        book_price = (
+            exam_plan.book_voucher_amount - exam_plan.book_voucher_discount
+            if data.book_voucher_eligible and exam_plan is not None
+            else Decimal("0")
+        )
+        exam_price = (
+            exam_plan.exam_total if data.exam_registered and exam_plan is not None else Decimal("0")
+        )
+        subtotal = sum((course.price for course in courses), Decimal("0")) + book_price + exam_price
         discount_amount = (
             (subtotal * discount.percentage / Decimal("100")).quantize(
                 Decimal("0.01"), ROUND_HALF_UP
@@ -172,7 +277,13 @@ class SchoolService:
             workspace_owner_id=self.workspace_owner_id,
             created_by_id=self.actor.id,
             **data.model_dump(
-                exclude={"course_ids", "discount_code", "payments", "registration_date"}
+                exclude={
+                    "course_ids",
+                    "discount_code",
+                    "payments",
+                    "registration_date",
+                    "exam_plan_id",
+                }
             ),
             registration_date=data.registration_date or date.today(),
         )
@@ -183,8 +294,17 @@ class SchoolService:
             student_id=student.id,
             created_by_id=self.actor.id,
             discount_code_id=discount.id if discount else None,
+            exam_plan_id=exam_plan.id if exam_plan else None,
             subtotal=subtotal,
             discount_amount=discount_amount,
+            book_price=book_price,
+            exam_price=exam_price,
+            exam_plan_code=exam_plan.plan_code if exam_plan else None,
+            book_voucher_discount=(
+                exam_plan.book_voucher_discount
+                if data.book_voucher_eligible and exam_plan is not None
+                else Decimal("0")
+            ),
             total_amount=total,
             amount_paid=paid_amount,
             balance_due=total - paid_amount,
@@ -228,6 +348,57 @@ class SchoolService:
             raise SchoolConflictError("A student with this national ID already exists") from exc
         self._load_student_details(student)
         return student
+
+    def _ensure_default_exam_plans(self) -> None:
+        exists = self.session.scalar(
+            select(SchoolExamPlan.id)
+            .where(SchoolExamPlan.workspace_owner_id == self.workspace_owner_id)
+            .limit(1)
+        )
+        if exists is not None:
+            return
+        plans: list[SchoolExamPlan] = []
+        for grade, track, book_amount, book_discount, price_sets in DEFAULT_EXAM_CATALOG:
+            for code, (count, unit_price, total) in zip(PLAN_CODES, price_sets, strict=True):
+                plans.append(
+                    SchoolExamPlan(
+                        workspace_owner_id=self.workspace_owner_id,
+                        grade=grade,
+                        academic_track=track,
+                        plan_code=code,
+                        exam_count=count,
+                        exam_unit_price=decimal(unit_price),
+                        exam_total=decimal(total),
+                        book_voucher_amount=decimal(book_amount),
+                        book_voucher_discount=decimal(book_discount),
+                    )
+                )
+        self.session.add_all(plans)
+        try:
+            self.session.commit()
+        except IntegrityError:
+            self.session.rollback()
+
+    def _resolve_exam_plan(self, data: StudentEnrollmentCreate) -> SchoolExamPlan | None:
+        if not data.exam_registered and not data.book_voucher_eligible:
+            return None
+        if data.exam_plan_id is None:
+            raise SchoolError("Select an exam plan before adding exams or books")
+        self._ensure_default_exam_plans()
+        plan = self.session.scalar(
+            select(SchoolExamPlan).where(
+                SchoolExamPlan.id == data.exam_plan_id,
+                SchoolExamPlan.workspace_owner_id == self.workspace_owner_id,
+                SchoolExamPlan.is_active.is_(True),
+            )
+        )
+        if plan is None:
+            raise SchoolError("The selected exam plan is unavailable")
+        if plan.grade != data.grade or plan.academic_track != data.academic_track:
+            raise SchoolError(
+                "The selected exam plan does not match this student's grade and major"
+            )
+        return plan
 
     def update_payment_status(
         self, payment_id: UUID, data: PaymentStatusUpdate

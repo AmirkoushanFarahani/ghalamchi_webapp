@@ -99,7 +99,9 @@ ROLE_PERMISSIONS = {
     }
     | ACCOUNTING_READ
     | {"school:read", "school:manage", "school:enroll", "school:payments"},
-    "EMPLOYEE": {"school:read", "school:enroll", "school:payments"},
+    # Registration secretaries can perform daily school operations, but cannot
+    # alter manager-controlled prices, courses, costs, users, or accounting.
+    "EMPLOYEE": {"reports:read", "school:read", "school:enroll", "school:payments"},
     "VIEWER": {"accounting:read", "reports:read", "ml:read"} | ACCOUNTING_READ,
 }
 

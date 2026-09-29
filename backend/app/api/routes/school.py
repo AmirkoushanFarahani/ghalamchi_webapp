@@ -1,6 +1,6 @@
 from datetime import date
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -26,15 +26,21 @@ from backend.app.ml.registry import (
 from backend.app.schemas.school import (
     CourseCreate,
     CourseRead,
+    CourseUpdate,
     DiscountCodeCreate,
     DiscountCodeRead,
     EnrollmentCourseRead,
     EnrollmentPaymentRead,
     EnrollmentRead,
+    ExamPlanRead,
+    ExamPlanUpdate,
     PaymentStatusUpdate,
+    RegistrationFeesRead,
+    RegistrationFeesUpdate,
     SchoolCostCreate,
     SchoolCostList,
     SchoolCostRead,
+    SchoolGrade,
     StudentEnrollmentCreate,
     StudentRead,
     StudentSegmentationRead,
@@ -59,7 +65,7 @@ def student_read(student: Student) -> StudentRead:
         birth_date=student.birth_date,
         registration_date=student.registration_date,
         first_exam_date=student.first_exam_date,
-        grade=student.grade,
+        grade=cast(SchoolGrade, student.grade),
         academic_track=student.academic_track,
         book_voucher_eligible=student.book_voucher_eligible,
         exam_registered=student.exam_registered,
@@ -75,10 +81,15 @@ def student_read(student: Student) -> StudentRead:
                 id=enrollment.id,
                 subtotal=enrollment.subtotal,
                 discount_amount=enrollment.discount_amount,
+                book_price=enrollment.book_price,
+                exam_price=enrollment.exam_price,
                 total_amount=enrollment.total_amount,
                 amount_paid=enrollment.amount_paid,
                 balance_due=enrollment.balance_due,
-                status=enrollment.status,
+                status=cast(
+                    Literal["UNPAID", "PARTIALLY_PAID", "PAID", "OVERDUE"],
+                    enrollment.status,
+                ),
                 courses=[EnrollmentCourseRead.model_validate(row) for row in enrollment.courses],
                 payments=[EnrollmentPaymentRead.model_validate(row) for row in enrollment.payments],
             )
@@ -108,6 +119,21 @@ def create_course(
         raise HTTPException(409, str(exc)) from exc
 
 
+@router.patch("/courses/{course_id}", response_model=CourseRead)
+def update_course(
+    course_id: UUID,
+    data: CourseUpdate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolCourse:
+    try:
+        return service(session, actor).update_course(course_id, data)
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
 @router.get("/discounts", response_model=list[DiscountCodeRead])
 def list_discounts(
     session: SessionDep, actor: Annotated[User, Depends(require_permission("school:manage"))]
@@ -125,6 +151,50 @@ def create_discount(
         return service(session, actor).create_discount(data)
     except SchoolConflictError as exc:
         raise HTTPException(409, str(exc)) from exc
+
+
+@router.get("/exam-plans", response_model=list[ExamPlanRead])
+def list_exam_plans(
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:read"))],
+    grade: str | None = None,
+) -> list[ExamPlanRead]:
+    return [
+        ExamPlanRead.model_validate(plan) for plan in service(session, actor).list_exam_plans(grade)
+    ]
+
+
+@router.patch("/exam-plans/{plan_id}", response_model=ExamPlanRead)
+def update_exam_plan(
+    plan_id: UUID,
+    data: ExamPlanUpdate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> ExamPlanRead:
+    try:
+        return ExamPlanRead.model_validate(service(session, actor).update_exam_plan(plan_id, data))
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/registration-fees", response_model=RegistrationFeesRead)
+def get_registration_fees(
+    session: SessionDep, actor: Annotated[User, Depends(require_permission("school:read"))]
+) -> RegistrationFeesRead:
+    book_price, exam_price = service(session, actor).registration_fees()
+    return RegistrationFeesRead(book_price=book_price, exam_price=exam_price)
+
+
+@router.put("/registration-fees", response_model=RegistrationFeesRead)
+def update_registration_fees(
+    data: RegistrationFeesUpdate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> RegistrationFeesRead:
+    fees = service(session, actor).update_registration_fees(data)
+    return RegistrationFeesRead(book_price=fees.book_price, exam_price=fees.exam_price)
 
 
 @router.get("/students", response_model=list[StudentRead])
@@ -203,9 +273,7 @@ def update_payment(
         raise HTTPException(404, str(exc)) from exc
 
 
-@router.post(
-    "/accounting/students/{student_id}/segment", response_model=StudentSegmentationRead
-)
+@router.post("/accounting/students/{student_id}/segment", response_model=StudentSegmentationRead)
 def segment_student_for_school_accounting(
     student_id: UUID,
     session: SessionDep,

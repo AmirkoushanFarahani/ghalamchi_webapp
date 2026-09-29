@@ -35,6 +35,12 @@ class CourseCreate(BaseModel):
     price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
 
 
+class CourseUpdate(CourseCreate):
+    """Manager-controlled replacement of editable course information."""
+
+    is_active: bool = True
+
+
 class CourseRead(ORMModel):
     id: UUID
     name: str
@@ -67,6 +73,51 @@ class DiscountCodeRead(ORMModel):
     is_active: bool
 
 
+class RegistrationFeesRead(BaseModel):
+    book_price: Decimal
+    exam_price: Decimal
+
+
+class RegistrationFeesUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    book_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    exam_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+
+
+class ExamPlanRead(ORMModel):
+    id: UUID
+    grade: SchoolGrade
+    academic_track: str | None
+    plan_code: str
+    exam_count: int
+    exam_unit_price: Decimal
+    exam_total: Decimal
+    book_voucher_amount: Decimal
+    book_voucher_discount: Decimal
+    is_active: bool
+
+
+class ExamPlanUpdate(BaseModel):
+    """Manager-controlled replacement of an exam and book-voucher plan."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    grade: SchoolGrade
+    academic_track: str | None = Field(default=None, max_length=100)
+    plan_code: str = Field(min_length=1, max_length=30)
+    exam_count: int = Field(gt=0)
+    exam_unit_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    exam_total: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    book_voucher_amount: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    book_voucher_discount: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    is_active: bool = True
+
+    @model_validator(mode="after")
+    def voucher_discount_must_not_exceed_amount(self) -> "ExamPlanUpdate":
+        if self.book_voucher_discount > self.book_voucher_amount:
+            raise ValueError("Book-voucher discount cannot exceed its amount")
+        return self
+
+
 class EnrollmentPaymentCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2)
@@ -94,13 +145,14 @@ class StudentEnrollmentCreate(BaseModel):
     academic_track: str | None = Field(default=None, max_length=100)
     book_voucher_eligible: bool = False
     exam_registered: bool = False
+    exam_plan_id: UUID | None = None
     guardian_full_name: str = Field(min_length=3, max_length=200)
     guardian_phone: str = Field(min_length=7, max_length=32)
     address: str | None = Field(default=None, max_length=500)
     previous_school: str | None = Field(default=None, max_length=200)
     emergency_contact: str | None = Field(default=None, max_length=200)
     notes: str | None = Field(default=None, max_length=1000)
-    course_ids: list[UUID] = Field(min_length=1)
+    course_ids: list[UUID] = Field(default_factory=list)
     discount_code: str | None = Field(default=None, max_length=50)
     payments: list[EnrollmentPaymentCreate] = Field(default_factory=list)
 
@@ -119,12 +171,16 @@ class EnrollmentPaymentRead(ORMModel):
     tracking_code: str | None
     sayad_id: str | None
     status: Literal["PENDING", "PAID", "BOUNCED"]
+    created_at: datetime
+    updated_at: datetime
 
 
 class EnrollmentRead(ORMModel):
     id: UUID
     subtotal: Decimal
     discount_amount: Decimal
+    book_price: Decimal
+    exam_price: Decimal
     total_amount: Decimal
     amount_paid: Decimal
     balance_due: Decimal
@@ -171,7 +227,7 @@ class StudentSegmentationRead(BaseModel):
 
 class SchoolCostCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
-    factor_number: str = Field(min_length=1, max_length=100)
+    factor_number: str | None = Field(default=None, max_length=100)
     vendor_name: str | None = Field(default=None, max_length=200)
     reason: str = Field(min_length=1, max_length=300)
     amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2)

@@ -57,7 +57,7 @@ export function SchoolCostsPage() {
     <>
       <PageHeader
         title="هزینه‌های آموزشگاه"
-        description="ثبت فاکتور هزینه مانند اجاره، آب‌وبرق، کتاب، حقوق یا خدمات. این فاکتورها در نمای مالی آموزشگاه محاسبه می‌شوند."
+        description="هر هزینه کسب‌وکار را اینجا ثبت کنید: خرید از تأمین‌کننده، قبوض، اجاره، حقوق، تعمیرات، کتاب یا هر مورد دیگر. شماره ثبت به‌صورت خودکار ساخته می‌شود."
         action={
           <button
             className="button button--primary"
@@ -200,15 +200,6 @@ function SchoolCostForm({
     <Modal open title="ثبت فاکتور هزینه" onClose={close}>
       <form className="form" onSubmit={submit}>
         {error && <p className="alert alert--error">{error}</p>}
-        <Field label="شماره فاکتور">
-          <input
-            name="factor_number"
-            dir="ltr"
-            required
-            maxLength={100}
-            placeholder="COST-001"
-          />
-        </Field>
         <Field label="دلیل هزینه">
           <input
             name="reason"

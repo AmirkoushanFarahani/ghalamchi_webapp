@@ -42,6 +42,10 @@ export function UsersPage() {
   </>;
 }
 function BusinessSettings() {
+  // The product is now school-focused, so business-profile selection is no
+  // longer part of the settings interface.
+  return null;
+
   const { updateBusiness } = useAuth();
   const { category } = useBusiness();
   const [selected, setSelected] = useState<BusinessCategory>(category);

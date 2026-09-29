@@ -1,0 +1,763 @@
+{
+  "time_utc": "2026-09-08T22:27:53.956019+00:00",
+  "seed_users": 10000,
+  "stages": [
+    {
+      "virtual_users": 10,
+      "elapsed_seconds": 35.58,
+      "requests": 274,
+      "rps": 7.7,
+      "status_counts": {
+        "200": 242,
+        "201": 32
+      },
+      "error_percent": 0.0,
+      "p50_seconds": 0.016,
+      "p95_seconds": 0.047,
+      "p99_seconds": 0.109,
+      "max_seconds": 0.265,
+      "peak_inflight": 4,
+      "client_event_loop_lag_p95": 0.019,
+      "readiness_after": 200,
+      "per_path": {
+        "/expenses": {
+          "requests": 37,
+          "p95_seconds": 0.016
+        },
+        "/invoices": {
+          "requests": 20,
+          "p95_seconds": 0.047
+        },
+        "/dashboard": {
+          "requests": 53,
+          "p95_seconds": 0.032
+        },
+        "/parties": {
+          "requests": 35,
+          "p95_seconds": 0.016
+        },
+        "/reports/trial-balance": {
+          "requests": 21,
+          "p95_seconds": 0.032
+        },
+        "/products": {
+          "requests": 28,
+          "p95_seconds": 0.031
+        },
+        "/auth/me": {
+          "requests": 24,
+          "p95_seconds": 0.016
+        },
+        "WRITE_DRAFT": {
+          "requests": 32,
+          "p95_seconds": 0.063
+        },
+        "/reports/customers": {
+          "requests": 24,
+          "p95_seconds": 0.032
+        }
+      },
+      "resources": [
+        {
+          "BlockIO": "146MB / 0B",
+          "CPUPerc": "5.35%",
+          "Container": "azari-load-backend",
+          "ID": "1d38f3f5146a",
+          "MemPerc": "17.86%",
+          "MemUsage": "182.9MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "9.9MB / 51.8MB",
+          "PIDs": "46"
+        },
+        {
+          "BlockIO": "37MB / 288MB",
+          "CPUPerc": "1.16%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "10.72%",
+          "MemUsage": "109.7MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "51.8MB / 9.82MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "3.81MB / 8.19kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "11.56%",
+          "MemUsage": "14.79MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "62.9kB / 159kB",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "146MB / 0B",
+          "CPUPerc": "7.60%",
+          "Container": "azari-load-backend",
+          "ID": "1d38f3f5146a",
+          "MemPerc": "17.94%",
+          "MemUsage": "183.7MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "10.4MB / 52.1MB",
+          "PIDs": "46"
+        },
+        {
+          "BlockIO": "37MB / 293MB",
+          "CPUPerc": "5.92%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "11.08%",
+          "MemUsage": "113.4MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "52MB / 10.2MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "3.81MB / 8.19kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "11.47%",
+          "MemUsage": "14.68MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "62.9kB / 159kB",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "146MB / 0B",
+          "CPUPerc": "7.58%",
+          "Container": "azari-load-backend",
+          "ID": "1d38f3f5146a",
+          "MemPerc": "18.01%",
+          "MemUsage": "184.4MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "10.9MB / 52.4MB",
+          "PIDs": "38"
+        },
+        {
+          "BlockIO": "37MB / 293MB",
+          "CPUPerc": "4.39%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "11.10%",
+          "MemUsage": "113.7MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "52.3MB / 10.9MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "3.81MB / 8.19kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "11.32%",
+          "MemUsage": "14.49MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "62.9kB / 159kB",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "146MB / 0B",
+          "CPUPerc": "8.62%",
+          "Container": "azari-load-backend",
+          "ID": "1d38f3f5146a",
+          "MemPerc": "17.98%",
+          "MemUsage": "184.2MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "11.4MB / 52.6MB",
+          "PIDs": "39"
+        },
+        {
+          "BlockIO": "37MB / 347MB",
+          "CPUPerc": "4.25%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "11.08%",
+          "MemUsage": "113.5MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "52.5MB / 11.4MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "3.81MB / 8.19kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "11.14%",
+          "MemUsage": "14.25MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "62.9kB / 159kB",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "146MB / 0B",
+          "CPUPerc": "14.35%",
+          "Container": "azari-load-backend",
+          "ID": "1d38f3f5146a",
+          "MemPerc": "18.01%",
+          "MemUsage": "184.4MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "12.1MB / 53.1MB",
+          "PIDs": "40"
+        },
+        {
+          "BlockIO": "37MB / 347MB",
+          "CPUPerc": "6.23%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "11.22%",
+          "MemUsage": "114.9MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "52.7MB / 11.8MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "3.81MB / 8.19kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "11.14%",
+          "MemUsage": "14.25MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "62.9kB / 159kB",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "146MB / 0B",
+          "CPUPerc": "7.12%",
+          "Container": "azari-load-backend",
+          "ID": "1d38f3f5146a",
+          "MemPerc": "17.99%",
+          "MemUsage": "184.2MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "12.6MB / 53.3MB",
+          "PIDs": "40"
+        },
+        {
+          "BlockIO": "37MB / 347MB",
+          "CPUPerc": "2.96%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "11.27%",
+          "MemUsage": "115.4MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "53MB / 12.4MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "3.81MB / 8.19kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "11.02%",
+          "MemUsage": "14.11MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "62.9kB / 159kB",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "146MB / 0B",
+          "CPUPerc": "0.24%",
+          "Container": "azari-load-backend",
+          "ID": "1d38f3f5146a",
+          "MemPerc": "17.99%",
+          "MemUsage": "184.2MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "12.9MB / 53.5MB",
+          "PIDs": "40"
+        },
+        {
+          "BlockIO": "37MB / 347MB",
+          "CPUPerc": "0.06%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "11.28%",
+          "MemUsage": "115.5MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "53.1MB / 12.7MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "3.81MB / 8.19kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "11.02%",
+          "MemUsage": "14.11MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "62.9kB / 159kB",
+          "PIDs": "17"
+        }
+      ]
+    },
+    {
+      "virtual_users": 100,
+      "elapsed_seconds": 34.81,
+      "requests": 2635,
+      "rps": 75.69,
+      "status_counts": {
+        "200": 2393,
+        "201": 242
+      },
+      "error_percent": 0.0,
+      "p50_seconds": 0.047,
+      "p95_seconds": 0.188,
+      "p99_seconds": 0.266,
+      "max_seconds": 0.406,
+      "peak_inflight": 29,
+      "client_event_loop_lag_p95": 0.003,
+      "readiness_after": 200,
+      "per_path": {
+        "/expenses": {
+          "requests": 246,
+          "p95_seconds": 0.125
+        },
+        "/invoices": {
+          "requests": 261,
+          "p95_seconds": 0.281
+        },
+        "/dashboard": {
+          "requests": 547,
+          "p95_seconds": 0.187
+        },
+        "/parties": {
+          "requests": 277,
+          "p95_seconds": 0.141
+        },
+        "WRITE_DRAFT": {
+          "requests": 242,
+          "p95_seconds": 0.203
+        },
+        "/reports/trial-balance": {
+          "requests": 263,
+          "p95_seconds": 0.14
+        },
+        "/auth/me": {
+          "requests": 255,
+          "p95_seconds": 0.109
+        },
+        "/reports/customers": {
+          "requests": 264,
+          "p95_seconds": 0.25
+        },
+        "/products": {
+          "requests": 280,
+          "p95_seconds": 0.11
+        }
+      },
+      "resources": [
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "23.18%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "17.61%",
+          "MemUsage": "180.3MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "258kB / 145kB",
+          "PIDs": "37"
+        },
+        {
+          "BlockIO": "200MB / 60.8MB",
+          "CPUPerc": "16.73%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "9.27%",
+          "MemUsage": "94.89MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "315kB / 695kB",
+          "PIDs": "9"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.40%",
+          "MemUsage": "15.87MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "99.00%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "18.04%",
+          "MemUsage": "184.7MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "5.23MB / 2.98MB",
+          "PIDs": "49"
+        },
+        {
+          "BlockIO": "200MB / 61.7MB",
+          "CPUPerc": "60.12%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "12.92%",
+          "MemUsage": "132.3MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "2.35MB / 4.94MB",
+          "PIDs": "20"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.41%",
+          "MemUsage": "15.89MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "93.83%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "18.23%",
+          "MemUsage": "186.7MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "10.9MB / 6.24MB",
+          "PIDs": "57"
+        },
+        {
+          "BlockIO": "200MB / 63.1MB",
+          "CPUPerc": "51.60%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "10.98%",
+          "MemUsage": "112.5MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "4.89MB / 10.3MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.41%",
+          "MemUsage": "15.89MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "98.30%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "18.36%",
+          "MemUsage": "188MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "16.3MB / 9.33MB",
+          "PIDs": "63"
+        },
+        {
+          "BlockIO": "200MB / 63.8MB",
+          "CPUPerc": "58.35%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "11.01%",
+          "MemUsage": "112.8MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "7.32MB / 15.5MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.41%",
+          "MemUsage": "15.89MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "110.72%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "18.44%",
+          "MemUsage": "188.9MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "22.1MB / 12.7MB",
+          "PIDs": "63"
+        },
+        {
+          "BlockIO": "200MB / 64.6MB",
+          "CPUPerc": "64.46%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "11.04%",
+          "MemUsage": "113.1MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "9.91MB / 20.9MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.41%",
+          "MemUsage": "15.89MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "102.68%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "18.45%",
+          "MemUsage": "188.9MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "27.5MB / 15.7MB",
+          "PIDs": "63"
+        },
+        {
+          "BlockIO": "200MB / 65.3MB",
+          "CPUPerc": "60.78%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "11.06%",
+          "MemUsage": "113.2MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "12.3MB / 26MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.41%",
+          "MemUsage": "15.89MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "19.20%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "18.42%",
+          "MemUsage": "188.6MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "31.2MB / 17.9MB",
+          "PIDs": "57"
+        },
+        {
+          "BlockIO": "200MB / 65.7MB",
+          "CPUPerc": "0.02%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "10.97%",
+          "MemUsage": "112.3MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "14MB / 29.6MB",
+          "PIDs": "11"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.41%",
+          "MemUsage": "15.89MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        }
+      ]
+    },
+    {
+      "virtual_users": 1000,
+      "elapsed_seconds": 26.39,
+      "requests": 1027,
+      "rps": 38.91,
+      "status_counts": {
+        "200": 26,
+        "201": 1,
+        "ReadTimeout": 1000
+      },
+      "error_percent": 97.37,
+      "p50_seconds": 10.031,
+      "p95_seconds": 10.063,
+      "p99_seconds": 10.094,
+      "max_seconds": 10.125,
+      "peak_inflight": 1000,
+      "client_event_loop_lag_p95": 0.019,
+      "readiness_after": "unreachable",
+      "per_path": {
+        "/expenses": {
+          "requests": 104,
+          "p95_seconds": 10.078
+        },
+        "/parties": {
+          "requests": 101,
+          "p95_seconds": 10.062
+        },
+        "/dashboard": {
+          "requests": 214,
+          "p95_seconds": 10.063
+        },
+        "/invoices": {
+          "requests": 101,
+          "p95_seconds": 10.062
+        },
+        "/reports/trial-balance": {
+          "requests": 95,
+          "p95_seconds": 10.063
+        },
+        "/auth/me": {
+          "requests": 105,
+          "p95_seconds": 10.063
+        },
+        "/products": {
+          "requests": 110,
+          "p95_seconds": 10.063
+        },
+        "/reports/customers": {
+          "requests": 99,
+          "p95_seconds": 10.078
+        },
+        "WRITE_DRAFT": {
+          "requests": 98,
+          "p95_seconds": 10.078
+        }
+      },
+      "resources": [
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "17.19%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "20.25%",
+          "MemUsage": "207.3MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "32MB / 18.2MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "201MB / 65.7MB",
+          "CPUPerc": "0.03%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "13.41%",
+          "MemUsage": "137.3MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "14.2MB / 30MB",
+          "PIDs": "21"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.41%",
+          "MemUsage": "15.89MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "0.13%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "23.08%",
+          "MemUsage": "236.3MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "32.4MB / 18.3MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "201MB / 66.3MB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "13.41%",
+          "MemUsage": "137.3MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "14.2MB / 30MB",
+          "PIDs": "21"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.41%",
+          "MemUsage": "15.89MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        },
+        {
+          "BlockIO": "274MB / 0B",
+          "CPUPerc": "0.98%",
+          "Container": "azari-load-backend",
+          "ID": "987724013e92",
+          "MemPerc": "22.92%",
+          "MemUsage": "234.7MiB / 1GiB",
+          "Name": "azari-load-backend",
+          "NetIO": "32.5MB / 18.3MB",
+          "PIDs": "79"
+        },
+        {
+          "BlockIO": "201MB / 66.3MB",
+          "CPUPerc": "0.02%",
+          "Container": "azari-load-db",
+          "ID": "482d03de7f4a",
+          "MemPerc": "13.41%",
+          "MemUsage": "137.3MiB / 1GiB",
+          "Name": "azari-load-db",
+          "NetIO": "14.2MB / 30MB",
+          "PIDs": "21"
+        },
+        {
+          "BlockIO": "9.82MB / 4.1kB",
+          "CPUPerc": "0.00%",
+          "Container": "azari-load-frontend",
+          "ID": "fa48435d9d27",
+          "MemPerc": "12.41%",
+          "MemUsage": "15.89MiB / 128MiB",
+          "Name": "azari-load-frontend",
+          "NetIO": "1.65kB / 126B",
+          "PIDs": "17"
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "API virtual users, not real browsers; 5s ramp, 0.8-1.2s think time, 10s request timeout",
+    "90% reads, 10% draft-invoice writes; JWT preauthenticated sessions; no AI or payment-posting workload",
+    "Stop escalation if p95 exceeds 2s, error rate exceeds 1%, or readiness fails",
+    "Isolated Docker stack: backend 2 CPUs/1GiB, database 2 CPUs/1GiB, frontend 0.5CPU/128MiB; same physical host as generator",
+    "Synthetic fixtures: 5 customers, 3 products, 3 invoices (1 issued,2 drafts) per user, plus balanced journal",
+    "Resumed existing synthetic database after Docker interruption; original 10-VU result retained; prior draft writes retained."
+  ],
+  "login_burst_same_ip": {
+    "429": 5,
+    "200": 5
+  },
+  "login_note": "Default per-IP rate limit retained; 429 is expected protection, not a crash. This is not a distributed-login capacity test.",
+  "frontend_100_parallel_html": {
+    "status_counts": {
+      "200": 100
+    },
+    "elapsed_seconds": 0.17
+  },
+  "resumed_utc": "2026-09-09T16:27:40.734163+00:00",
+  "stop_reason": "Stopped escalation after 1000 VUs: threshold exceeded. Larger stages NOT tested."
+}

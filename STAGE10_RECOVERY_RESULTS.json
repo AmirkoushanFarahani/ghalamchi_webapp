@@ -1,0 +1,53 @@
+{
+  "before": {
+    "checkout": 3186,
+    "queries": 16838,
+    "query_seconds": 153.8416971510053,
+    "checkin": 3188,
+    "max_hold_seconds": 0,
+    "admitted_sessions": 0,
+    "pool": "Pool size: 5  Connections in pool: 5 Current Overflow: 0 Current Checked out connections: 0",
+    "borrowed_threads": 0,
+    "thread_limit": 40,
+    "threads": {
+      "_bootstrap/_bootstrap_inner/run/get/wait": 1,
+      "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+    },
+    "await_chains": {
+      "_run_coro": 1,
+      "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+      "serve/_serve/main_loop/sleep": 1,
+      "run_asgi/__call__/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1
+    }
+  },
+  "outage": {
+    "health": 200,
+    "ready": 503,
+    "body": {
+      "detail": "Database temporarily unavailable"
+    },
+    "seconds": 7.875
+  },
+  "after": {
+    "checkout": 3187,
+    "queries": 16839,
+    "query_seconds": 153.8422997050053,
+    "checkin": 3191,
+    "max_hold_seconds": 0,
+    "admitted_sessions": 0,
+    "pool": "Pool size: 5  Connections in pool: 5 Current Overflow: 0 Current Checked out connections: 0",
+    "borrowed_threads": 0,
+    "thread_limit": 40,
+    "threads": {
+      "_bootstrap/_bootstrap_inner/run/get/wait": 1,
+      "<module>/__call__/main/invoke/invoke/main/run/run/run/run/_run_coro/coro/__call__/__call__/wrapped_app/__call__/__call__/app/handle/handle": 1
+    },
+    "await_chains": {
+      "run_asgi/__call__/__call__/__call__/__call__/__call__/__call__/security_headers/call_next/receive/checkpoint/checkpoint/sleep/__sleep0": 1,
+      "main/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/__call__/app/lifespan/receive/get": 1,
+      "serve/_serve/main_loop/sleep": 1,
+      "_run_coro": 1
+    }
+  },
+  "backend_not_restarted": true
+}

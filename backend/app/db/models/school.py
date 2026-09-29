@@ -64,6 +64,69 @@ class DiscountCode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
+class SchoolRegistrationFees(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Manager-controlled prices for optional registration services."""
+
+    __tablename__ = "school_registration_fees"
+    __table_args__ = (
+        UniqueConstraint("workspace_owner_id", name="uq_school_registration_fees_workspace"),
+        CheckConstraint("book_price >= 0", name="nonnegative_school_book_price"),
+        CheckConstraint("exam_price >= 0", name="nonnegative_school_exam_price"),
+    )
+
+    workspace_owner_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    book_price: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2), default=Decimal("0"), server_default="0"
+    )
+    exam_price: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2), default=Decimal("0"), server_default="0"
+    )
+
+
+class SchoolExamPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Manager-owned exam and book-voucher pricing for a grade and major."""
+
+    __tablename__ = "school_exam_plans"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_owner_id",
+            "grade",
+            "academic_track",
+            "plan_code",
+            name="uq_school_exam_plan_workspace_grade_track_code",
+        ),
+        CheckConstraint(GRADE_CHECK, name="valid_school_exam_plan_grade"),
+        CheckConstraint("exam_count > 0", name="positive_school_exam_plan_count"),
+        CheckConstraint("exam_unit_price >= 0", name="nonnegative_school_exam_plan_unit_price"),
+        CheckConstraint("exam_total >= 0", name="nonnegative_school_exam_plan_total"),
+        CheckConstraint(
+            "book_voucher_amount >= 0", name="nonnegative_school_exam_plan_book_amount"
+        ),
+        CheckConstraint(
+            "book_voucher_discount >= 0", name="nonnegative_school_exam_plan_book_discount"
+        ),
+        CheckConstraint(
+            "book_voucher_discount <= book_voucher_amount",
+            name="school_exam_plan_discount_within_book_amount",
+        ),
+    )
+
+    workspace_owner_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    grade: Mapped[str] = mapped_column(String(20), index=True)
+    academic_track: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
+    plan_code: Mapped[str] = mapped_column(String(30))
+    exam_count: Mapped[int] = mapped_column(Integer)
+    exam_unit_price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    exam_total: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    book_voucher_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    book_voucher_discount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+
+
 class Student(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "students"
     __table_args__ = (
@@ -129,8 +192,17 @@ class StudentEnrollment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     discount_code_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("school_discount_codes.id", ondelete="RESTRICT"), nullable=True
     )
+    exam_plan_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_exam_plans.id", ondelete="RESTRICT"), nullable=True
+    )
     subtotal: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     discount_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
+    book_price: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
+    exam_price: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
+    exam_plan_code: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    book_voucher_discount: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2), default=0, server_default="0"
+    )
     total_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     amount_paid: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
     balance_due: Mapped[Decimal] = mapped_column(Numeric(18, 2))

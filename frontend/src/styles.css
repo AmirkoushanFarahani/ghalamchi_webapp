@@ -110,6 +110,7 @@ h1, h2, h3, p { margin-top: 0; }
 .kpi > span { color: var(--muted); font-size: .86rem; }
 .kpi .money, .kpi > strong { margin-top: auto; font-size: 1.25rem; font-weight: 800; color: var(--text); }
 .kpi small { color: var(--muted); margin-top: 2px; }.kpi.positive .money { color: var(--green-dark); }.kpi.negative .money { color: var(--danger); }
+.kpi--link { color: inherit; cursor: pointer; text-decoration: none; }.kpi--link:hover { border-color: color-mix(in srgb,var(--green),var(--border) 35%); }.kpi--link:focus-visible { outline: 3px solid color-mix(in srgb,var(--green),transparent 45%); outline-offset: 3px; }
 .dashboard-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }.span-2 { grid-column: span 2; }
 .compact-list { display: grid; }
 .compact-list > a, .compact-list > div { min-height: 62px; display: flex; align-items: center; justify-content: space-between; gap: 15px; border-bottom: 1px solid var(--border); padding: 8px 1px; }

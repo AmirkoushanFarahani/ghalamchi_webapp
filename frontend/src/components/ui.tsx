@@ -31,7 +31,7 @@ export const formatMoneyInput = (value: string | number | null | undefined) => {
   if (!normalized) return "";
   const [whole, fraction] = normalized.split(".");
   const grouped = whole.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-  return fraction === undefined ? grouped : `${grouped}.${fraction}`;
+  return fraction === undefined || /^0+$/.test(fraction) ? grouped : `${grouped}.${fraction}`;
 };
 type MoneyInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "value" | "defaultValue" | "onChange" | "name"> & {
   name?: string;

@@ -35,9 +35,12 @@ export function navigationForBusiness(category: BusinessCategory) {
       { label: "پرونده مشتریان", path: "/student-records", permission: "school:read" },
       { label: "دوره‌ها و شهریه‌ها", path: "/courses", permission: "school:read" },
     ] },
+    { label: "هزینه‌ها", path: "/school-costs", permission: "school:manage" },
     { label: "حسابداری", items: [
-      { label: "نمای مالی آموزشگاه", path: "/school-accounting", permission: "school:manage" },
-      { label: "هزینه‌های آموزشگاه", path: "/school-costs", permission: "school:manage" },
+      { label: "نمای کلی مالی", path: "/school-accounting", permission: "school:manage" },
+      { label: "درآمد و مطالبات شهریه", path: "/school-accounting/tuition", permission: "school:manage" },
+      { label: "صندوق و بانک", path: "/school-accounting/cash-bank", permission: "school:manage" },
+      { label: "گزارش شهریه بر اساس پایه", path: "/school-accounting/reports", permission: "school:manage" },
     ] },
     { label: "مدیریت", items: [
       { label: "کاربران", path: "/users", permission: "users:read" },
