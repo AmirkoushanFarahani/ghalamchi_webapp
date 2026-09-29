@@ -248,7 +248,7 @@ async def main():
             ),
             flush=True,
         )
-        Path("LOAD_TEST_RESULTS.json").write_text(
+        Path("docs/reports/LOAD_TEST_RESULTS.json").write_text(
             json.dumps(report, indent=2), encoding="utf-8"
         )
         if (
@@ -261,7 +261,7 @@ async def main():
             )
             break
         await asyncio.sleep(3)
-    Path("LOAD_TEST_RESULTS.json").write_text(
+    Path("docs/reports/LOAD_TEST_RESULTS.json").write_text(
         json.dumps(report, indent=2), encoding="utf-8"
     )
     print(report.get("stop_reason", "All planned stages completed"), flush=True)

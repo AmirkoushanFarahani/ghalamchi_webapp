@@ -38,7 +38,7 @@ as successful application throughput (only 27 attempts succeeded).
 - Approximately 90% reads: dashboard, invoice list, customer list/history summaries,
   trial balance, expenses, current user and products. Approximately 10% creates
   draft invoices. Actual endpoint counts and resource samples are in
-  `LOAD_TEST_RESULTS.json`.
+  `reports/LOAD_TEST_RESULTS.json`.
 - Synthetic signed JWTs represent already logged-in users. JWT validation, database
   user lookup and permission checks remain active. Login hashing is tested separately.
 - Stop escalation for p95 >2 seconds, errors >1%, or failed readiness; active stages
@@ -91,7 +91,7 @@ client responses alone should not be used to count persisted drafts.
 ## Files and next step
 
 Test-only files: `scripts/seed_load_test.py`, `scripts/run_load_test.py`,
-`scripts/run_load_test.ps1`, `scripts/resume_load_test.py`, `LOAD_TEST_RESULTS.json`,
+`scripts/run_load_test.ps1`, `scripts/resume_load_test.py`, `reports/LOAD_TEST_RESULTS.json`,
 and this report. Ruff passed for the Python load scripts. No application logic,
 production configuration, real users, or real accounting records were changed by
 this load-test task. No commit/push performed.

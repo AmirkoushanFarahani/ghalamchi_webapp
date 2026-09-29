@@ -18,7 +18,7 @@ def docker(*args):
 
 
 async def main():
-    report_path = Path("LOAD_TEST_RESULTS.json")
+    report_path = Path("docs/reports/LOAD_TEST_RESULTS.json")
     report = json.loads(report_path.read_text(encoding="utf-8"))
     if any(
         stage["error_percent"] > 1

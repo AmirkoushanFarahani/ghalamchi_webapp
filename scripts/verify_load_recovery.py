@@ -60,7 +60,7 @@ def main():
         == backend["State"]["StartedAt"]
     )
     assert result["backend_not_restarted"]
-    Path("LOAD_RECOVERY_RESULTS.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    Path("docs/reports/LOAD_RECOVERY_RESULTS.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result["outage"]))
     print("PASS: connections returned, outage detected, recovered without backend restart")
 

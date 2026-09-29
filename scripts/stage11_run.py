@@ -13,7 +13,7 @@ def main():
     env = dict(item.split("=", 1) for item in info["Config"]["Env"])
     assert env["DATABASE_URL"].endswith("/azari_load_test")
     name = "azari-stage11-gen-" + label
-    output = "STAGE11_" + label + ".json"
+    output = "docs/reports/STAGE11_" + label + ".json"
     subprocess.run([
         "docker", "run", "--name", name, "--network", "azari-stage11",
         "--cpus", "2", "--cpuset-cpus", "4,5", "--memory", "1g",

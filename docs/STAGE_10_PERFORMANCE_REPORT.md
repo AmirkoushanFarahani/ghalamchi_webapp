@@ -28,7 +28,7 @@ The Stage 10 baseline is newly measured, not copied from the previous report.
 | 100 | 2,162 | 2,162 | 0 | 0 | 297 / 641 / 1,015 | 60.95 | Pass |
 | 250 | 471 | 410 | 61 | 0 | 828 / 1,219 / 1,344 | 66.85 | Fail: 12.95% errors |
 
-Evidence: `STAGE10_LOAD_BEFORE.json`.
+Evidence: `reports/STAGE10_LOAD_BEFORE.json`.
 
 ## 4. Bottlenecks discovered
 
@@ -42,11 +42,11 @@ Evidence: `STAGE10_LOAD_BEFORE.json`.
 
 For five customers, HTTP customer-summary queries fell from 19 to 7 (including three authentication queries). The repository component is now four queries regardless of customer count. Three-invoice HTTP listing fell from ten queries to six. Service-level tests verify invoice listing uses three queries and journal listing two, including response schema validation.
 
-`STAGE10_PROFILE_AFTER.json` is an intermediate experiment, NOT the final result: it exposed that an initial repository-list optimization did not affect the actual API service path. That repository change was reverted. `STAGE10_PROFILE_FINAL.json` measures the corrected service implementation.
+`reports/STAGE10_PROFILE_AFTER.json` is an intermediate experiment, NOT the final result: it exposed that an initial repository-list optimization did not affect the actual API service path. That repository change was reverted. `reports/STAGE10_PROFILE_FINAL.json` measures the corrected service implementation.
 
 ## 6. Database analysis
 
-Actual ORM SQL and PostgreSQL EXPLAIN ANALYZE/BUFFERS are retained in `STAGE10_PLANS_BEFORE.json` and `STAGE10_PLANS_AFTER.json`, without query parameter values.
+Actual ORM SQL and PostgreSQL EXPLAIN ANALYZE/BUFFERS are retained in `reports/STAGE10_PLANS_BEFORE.json` and `reports/STAGE10_PLANS_AFTER.json`, without query parameter values.
 
 | Query family | Before ms | After ms | Plan change |
 |---|---:|---:|---|
@@ -215,6 +215,6 @@ Tests/fixtures: backend/tests/test_performance_queries.py; backend/tests/test_ow
 
 Diagnostics: scripts/stage10_probe.py; scripts/stage10_profile.py; scripts/stage10_plans.py; scripts/stage10_load.py; scripts/stage10_migration_check.py; scripts/stage10_recovery.py; compose.stage10-verification.yaml.
 
-Evidence: STAGE10_PROFILE_BEFORE.json; STAGE10_PROFILE_AFTER.json (intermediate); STAGE10_PROFILE_FINAL.json; STAGE10_PLANS_BEFORE.json; STAGE10_PLANS_AFTER.json; STAGE10_LOAD_BEFORE.json; STAGE10_LOAD_AFTER.json; STAGE10_LOAD_REPEAT.json; STAGE10_RECOVERY_RESULTS.json.
+Evidence: reports/STAGE10_PROFILE_BEFORE.json; reports/STAGE10_PROFILE_AFTER.json (intermediate); reports/STAGE10_PROFILE_FINAL.json; reports/STAGE10_PLANS_BEFORE.json; reports/STAGE10_PLANS_AFTER.json; reports/STAGE10_LOAD_BEFORE.json; reports/STAGE10_LOAD_AFTER.json; reports/STAGE10_LOAD_REPEAT.json; reports/STAGE10_RECOVERY_RESULTS.json.
 
 Documentation: this file; PROJECT_ANALYSIS.md; HOW_THE_PROJECT_WORKS.md; docs/ARCHITECTURE.md; docs/SETUP.md. Other modified/untracked files shown by git status predate Stage 10 and were preserved. Recommended eventual commit message: `Performance profiling and capacity improvements` (review and stage selectively).

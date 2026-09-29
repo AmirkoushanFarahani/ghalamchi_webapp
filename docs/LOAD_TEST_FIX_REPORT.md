@@ -15,9 +15,9 @@ No real accounting database was accessed or altered. No commit or push was made.
 
 ## Original failure and investigation
 
-The original preserved LOAD_TEST_RESULTS.json records 2,635 requests at 100 users,
+The original preserved reports/LOAD_TEST_RESULTS.json records 2,635 requests at 100 users,
 zero errors, p95 188 ms; at 1,000 users, 97.37% timed out and readiness was unreachable.
-Containers did not crash. The diagnostic reproduction in LOAD_DIAG_BEFORE.json produced
+Containers did not crash. The diagnostic reproduction in reports/LOAD_DIAG_BEFORE.json produced
 1,012 requests, 12 successes and 1,000 ReadTimeout errors (98.81%); p95 was 10.046 s.
 
 Inspection covered engine/session construction, get_db, authentication dependencies,
@@ -142,7 +142,7 @@ Docker CPU percentage can exceed 100% (one core); samples are not continuous max
 The Sep 9 sample likewise bounded admission to 15 and returned every connection.
 
 An initial fixed test was launched before the server was ready and returned connection
-errors. It is preserved as LOAD_DIAG_STARTUP_INVALID.json, excluded from capacity claims;
+errors. It is preserved as reports/LOAD_DIAG_STARTUP_INVALID.json, excluded from capacity claims;
 the diagnostic runner now waits for readiness. A first outage-check assertion incorrectly
 assumed raw checkout/checkin event counts must always match. Failed pre-ping/reconnection
 can emit checkin(None) without checkout. The corrected test checks actual zero pool
@@ -212,8 +212,8 @@ Verification/support:
 - scripts/diagnose_load.py, scripts/performance_probe.py (new isolated diagnostics).
 - scripts/verify_load_recovery.py (new guarded synthetic database outage check).
 - compose.load-verification.yaml (new isolated smoke definition).
-- LOAD_DIAG_BEFORE.json, LOAD_DIAG_AFTER.json, LOAD_DIAG_FINAL.json,
-  LOAD_DIAG_RESUMED.json, LOAD_DIAG_STARTUP_INVALID.json, LOAD_RECOVERY_RESULTS.json.
+- reports/LOAD_DIAG_BEFORE.json, reports/LOAD_DIAG_AFTER.json, reports/LOAD_DIAG_FINAL.json,
+  reports/LOAD_DIAG_RESUMED.json, reports/LOAD_DIAG_STARTUP_INVALID.json, reports/LOAD_RECOVERY_RESULTS.json.
 - LOAD_TEST_FIX_REPORT.md (this report).
 
 Existing dirty files from prior business-profile/expense/frontend/documentation work were
