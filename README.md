@@ -8,7 +8,7 @@ The repository is being implemented in verified milestones. Stage 1 provides
 the runnable three-service foundation; Stage 2 adds PostgreSQL persistence,
 identity, JWT authentication, database-backed RBAC, and security audit events.
 Stage 3 adds the transactional double-entry accounting vertical slice. See
-[PROJECT_ANALYSIS.md](PROJECT_ANALYSIS.md) for the audit, architecture, risks,
+[PROJECT_ANALYSIS.md](docs/PROJECT_ANALYSIS.md) for the audit, architecture, risks,
 and roadmap.
 
 Stage 7 adds the complete Persian/RTL web application: authenticated and
@@ -29,7 +29,7 @@ workflows, restart persistence, and a non-root backend image.
 
 Local backend and frontend setup is documented in [docs/SETUP.md](docs/SETUP.md).
 For a source-verified explanation of the complete current system in English and
-Persian, read [HOW_THE_PROJECT_WORKS.md](HOW_THE_PROJECT_WORKS.md). The stage
+Persian, read [HOW_THE_PROJECT_WORKS.md](docs/HOW_THE_PROJECT_WORKS.md). The stage
 documents below are historical delivery records rather than the current-state
 reference.
 
@@ -51,7 +51,7 @@ both optional bootstrap environment variables are explicitly set.
 Authenticated, permission-protected APIs now manage parties, products, the
 chart of accounts, financial periods, draft/post/reverse journals, invoices,
 payments, and allocations. Invoice issuance and payment posting use the same
-balanced journal posting engine. See [STAGE_3_IMPLEMENTATION.md](STAGE_3_IMPLEMENTATION.md).
+balanced journal posting engine. See [STAGE_3_IMPLEMENTATION.md](docs/STAGE_3_IMPLEMENTATION.md).
 
 ## Stage 4 reports API
 
@@ -75,7 +75,7 @@ were not yet wired to HTTP or the database; Stage 6 added that integration.
 ```
 
 Generated CSVs and versioned artifacts are ignored by Git. See
-[docs/ML.md](docs/ML.md) and [STAGE_5_IMPLEMENTATION.md](STAGE_5_IMPLEMENTATION.md).
+[docs/ML.md](docs/ML.md) and [STAGE_5_IMPLEMENTATION.md](docs/STAGE_5_IMPLEMENTATION.md).
 
 ## Stage 6 ML integration
 
@@ -85,7 +85,7 @@ thread-safe artifact cache, append-only predictions, feedback, RBAC, and audit
 events. It uses real persisted invoice/payment/customer history at explicit
 cutoffs where applicable. Training remains offline; registration and activation
 are ADMIN-only through `ml:manage`. See
-[STAGE_6_IMPLEMENTATION.md](STAGE_6_IMPLEMENTATION.md).
+[STAGE_6_IMPLEMENTATION.md](docs/STAGE_6_IMPLEMENTATION.md).
 
 ## Stage 7 production frontend
 
@@ -98,7 +98,7 @@ dark theme and calendar choice persist locally.
 
 Frontend developer and test commands are in [frontend/README.md](frontend/README.md).
 Implementation and verification details are in
-[STAGE_7_IMPLEMENTATION.md](STAGE_7_IMPLEMENTATION.md).
+[STAGE_7_IMPLEMENTATION.md](docs/STAGE_7_IMPLEMENTATION.md).
 
 ## Stage 8 production readiness
 
@@ -107,4 +107,4 @@ authentication/RBAC, reports, all registered ML pipelines, feedback and
 low-confidence review, responsive Persian presentation, Compose health,
 migrations, and persisted data after restart. Remaining synthetic-ML and
 product-scope limitations are explicit in
-[STAGE_8_IMPLEMENTATION.md](STAGE_8_IMPLEMENTATION.md).
+[STAGE_8_IMPLEMENTATION.md](docs/STAGE_8_IMPLEMENTATION.md).
