@@ -42,7 +42,7 @@ services:
     build:
       context: frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8100/api/v1}
+        VITE_API_URL: /api/v1
     ports:
       - "4173:80"
     healthcheck:

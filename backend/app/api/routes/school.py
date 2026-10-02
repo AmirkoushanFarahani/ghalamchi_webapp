@@ -4,6 +4,7 @@ from typing import Annotated, Literal, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.api.dependencies import require_permission
@@ -14,6 +15,8 @@ from backend.app.db.models import (
     EnrollmentPayment,
     SchoolCost,
     SchoolCourse,
+    SchoolInstitute,
+    SchoolSpecialSupport,
     Student,
     User,
 )
@@ -40,7 +43,16 @@ from backend.app.schemas.school import (
     SchoolCostCreate,
     SchoolCostList,
     SchoolCostRead,
+    SchoolComparisonRead,
     SchoolGrade,
+    SchoolInstituteCreate,
+    SchoolInstituteRead,
+    SchoolInstituteSelect,
+    SchoolSecretaryAssign,
+    SchoolSecretaryCreate,
+    SpecialSupportCreate,
+    SpecialSupportRead,
+    SpecialSupportUpdate,
     StudentEnrollmentCreate,
     StudentRead,
     StudentSegmentationRead,
@@ -83,6 +95,12 @@ def student_read(student: Student) -> StudentRead:
                 discount_amount=enrollment.discount_amount,
                 book_price=enrollment.book_price,
                 exam_price=enrollment.exam_price,
+                special_support_name=enrollment.special_support_name,
+                special_support_period=cast(
+                    Literal["MONTHLY", "SEASONAL"] | None,
+                    enrollment.special_support_period,
+                ),
+                special_support_price=enrollment.special_support_price,
                 total_amount=enrollment.total_amount,
                 amount_paid=enrollment.amount_paid,
                 balance_due=enrollment.balance_due,
@@ -96,6 +114,94 @@ def student_read(student: Student) -> StudentRead:
             for enrollment in student.enrollments
         ],
     )
+
+
+def institute_read(session: Session, institute: SchoolInstitute) -> SchoolInstituteRead:
+    secretary = session.scalar(
+        select(User).where(User.school_institute_id == institute.id).order_by(User.created_at)
+    )
+    return SchoolInstituteRead(
+        id=institute.id,
+        name=institute.name,
+        is_active=institute.is_active,
+        secretary_id=secretary.id if secretary else None,
+        secretary_name=(f"{secretary.first_name} {secretary.last_name}" if secretary else None),
+    )
+
+
+@router.get("/institutes", response_model=list[SchoolInstituteRead])
+def list_institutes(
+    session: SessionDep, actor: Annotated[User, Depends(require_permission("school:read"))]
+) -> list[SchoolInstituteRead]:
+    return [institute_read(session, row) for row in service(session, actor).list_institutes()]
+
+
+@router.post("/institutes", response_model=SchoolInstituteRead, status_code=status.HTTP_201_CREATED)
+def create_institute(
+    data: SchoolInstituteCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolInstituteRead:
+    try:
+        return institute_read(session, service(session, actor).create_institute(data))
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(403, str(exc)) from exc
+
+
+@router.patch("/institutes/active", response_model=SchoolInstituteRead)
+def select_institute(
+    data: SchoolInstituteSelect,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolInstituteRead:
+    try:
+        return institute_read(session, service(session, actor).select_institute(data.school_institute_id))
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.patch("/institutes/{school_id}/secretary", response_model=SchoolInstituteRead)
+def assign_secretary(
+    school_id: UUID,
+    data: SchoolSecretaryAssign,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolInstituteRead:
+    try:
+        return institute_read(session, service(session, actor).assign_secretary(school_id, data))
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.post("/institutes/{school_id}/secretaries", response_model=SchoolInstituteRead, status_code=status.HTTP_201_CREATED)
+def create_secretary(
+    school_id: UUID,
+    data: SchoolSecretaryCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolInstituteRead:
+    try:
+        service(session, actor).create_secretary(school_id, data)
+        school = session.get(SchoolInstitute, school_id)
+        assert school is not None
+        return institute_read(session, school)
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/institutes/comparison", response_model=list[SchoolComparisonRead])
+def compare_institutes(
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> list[SchoolComparisonRead]:
+    try:
+        return [SchoolComparisonRead.model_validate(row) for row in service(session, actor).comparison()]
+    except SchoolError as exc:
+        raise HTTPException(403, str(exc)) from exc
 
 
 @router.get("/courses", response_model=list[CourseRead])
@@ -134,6 +240,46 @@ def update_course(
         raise HTTPException(404, str(exc)) from exc
 
 
+@router.get("/special-supports", response_model=list[SpecialSupportRead])
+def list_special_supports(
+    session: SessionDep, actor: Annotated[User, Depends(require_permission("school:read"))]
+) -> list[SchoolSpecialSupport]:
+    return service(session, actor).list_special_supports()
+
+
+@router.post(
+    "/special-supports", response_model=SpecialSupportRead, status_code=status.HTTP_201_CREATED
+)
+def create_special_support(
+    data: SpecialSupportCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolSpecialSupport:
+    try:
+        return service(session, actor).create_special_support(
+            data.name, data.monthly_price, data.seasonal_price
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.patch("/special-supports/{support_id}", response_model=SpecialSupportRead)
+def update_special_support(
+    support_id: UUID,
+    data: SpecialSupportUpdate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolSpecialSupport:
+    try:
+        return SpecialSupportRead.model_validate(
+            service(session, actor).update_special_support(support_id, data)
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
 @router.get("/discounts", response_model=list[DiscountCodeRead])
 def list_discounts(
     session: SessionDep, actor: Annotated[User, Depends(require_permission("school:manage"))]
@@ -162,6 +308,18 @@ def list_exam_plans(
     return [
         ExamPlanRead.model_validate(plan) for plan in service(session, actor).list_exam_plans(grade)
     ]
+
+
+@router.post("/exam-plans", response_model=ExamPlanRead, status_code=status.HTTP_201_CREATED)
+def create_exam_plan(
+    data: ExamPlanUpdate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> ExamPlanRead:
+    try:
+        return ExamPlanRead.model_validate(service(session, actor).create_exam_plan(data))
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
 
 
 @router.patch("/exam-plans/{plan_id}", response_model=ExamPlanRead)

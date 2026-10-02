@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
 SchoolGrade = Literal[
     "GRADE_1",
@@ -84,6 +84,37 @@ class RegistrationFeesUpdate(BaseModel):
     exam_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
 
 
+class SpecialSupportCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    name: str = Field(min_length=1, max_length=200)
+    monthly_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    seasonal_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+
+
+class SpecialSupportUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    name: str = Field(min_length=1, max_length=200)
+    monthly_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    seasonal_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    is_active: bool = True
+
+
+class SpecialSupportRead(ORMModel):
+    id: UUID
+    name: str
+    monthly_price: Decimal
+    seasonal_price: Decimal
+    is_active: bool
+
+
+class SpecialSupportSelection(BaseModel):
+    """An optional special-support add-on chosen during student registration."""
+
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    support_id: UUID
+    period: Literal["MONTHLY", "SEASONAL"]
+
+
 class ExamPlanRead(ORMModel):
     id: UUID
     grade: SchoolGrade
@@ -154,6 +185,7 @@ class StudentEnrollmentCreate(BaseModel):
     notes: str | None = Field(default=None, max_length=1000)
     course_ids: list[UUID] = Field(default_factory=list)
     discount_code: str | None = Field(default=None, max_length=50)
+    special_support: SpecialSupportSelection | None = None
     payments: list[EnrollmentPaymentCreate] = Field(default_factory=list)
 
 
@@ -181,6 +213,9 @@ class EnrollmentRead(ORMModel):
     discount_amount: Decimal
     book_price: Decimal
     exam_price: Decimal
+    special_support_name: str | None
+    special_support_period: Literal["MONTHLY", "SEASONAL"] | None
+    special_support_price: Decimal
     total_amount: Decimal
     amount_paid: Decimal
     balance_due: Decimal
@@ -260,3 +295,46 @@ class SchoolCostRead(ORMModel):
 class SchoolCostList(BaseModel):
     items: list[SchoolCostRead]
     total: Decimal
+
+
+class SchoolInstituteCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    name: str = Field(min_length=2, max_length=200)
+
+
+class SchoolInstituteRead(ORMModel):
+    id: UUID
+    name: str
+    is_active: bool
+    secretary_name: str | None = None
+    secretary_id: UUID | None = None
+
+
+class SchoolInstituteSelect(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    school_institute_id: UUID
+
+
+class SchoolSecretaryAssign(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    secretary_id: UUID
+
+
+class SchoolSecretaryCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+    password: str = Field(min_length=12, max_length=128)
+
+
+class SchoolComparisonRead(BaseModel):
+    school_institute_id: UUID
+    school_name: str
+    student_count: int
+    registered_tuition: Decimal
+    received_tuition: Decimal
+    outstanding_tuition: Decimal
+    due_payments: Decimal
+    costs: Decimal
+    net_cash: Decimal

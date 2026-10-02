@@ -6,6 +6,7 @@ import { StudentRecordsPage } from "./pages/StudentRecordsPage";
 import { SchoolAccountingPage } from "./pages/SchoolAccountingPage";
 import { SchoolCashBankPage, SchoolReportPage, SchoolTuitionPage } from "./pages/SchoolAccountingDetailsPages";
 import { SchoolCostsPage } from "./pages/SchoolCostsPage";
+import { SchoolInstitutesPage } from "./pages/SchoolInstitutesPage";
 import { DuePaymentsPage, OutstandingTuitionPage, ReceivedTuitionPage, RegisteredTuitionPage } from "./pages/TuitionDetailsPages";
 import { useAuth } from "./auth/AuthContext";
 import { LoadingState } from "./components/ui";
@@ -32,6 +33,7 @@ export const routes: Route[] = [
   { path: "/school-accounting/cash-bank", component: SchoolCashBankPage, permission: "school:manage" },
   { path: "/school-accounting/reports", component: SchoolReportPage, permission: "school:manage" },
   { path: "/school-costs", component: SchoolCostsPage, permission: "school:manage" },
+  { path: "/school-institutes", component: SchoolInstitutesPage, permission: "school:manage" },
   { path: "/tuition/registered", component: RegisteredTuitionPage, permission: "school:read" },
   { path: "/tuition/received", component: ReceivedTuitionPage, permission: "school:read" },
   { path: "/tuition/outstanding", component: OutstandingTuitionPage, permission: "school:read" },

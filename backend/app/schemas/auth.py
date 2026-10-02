@@ -77,5 +77,7 @@ class UserRead(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_login_at: datetime | None
+    school_institute_id: UUID | None
+    active_school_institute_id: UUID | None
     roles: list[str] = Field(validation_alias="role_names")
     permissions: list[str] = Field(validation_alias="permission_names")

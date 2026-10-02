@@ -83,6 +83,14 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     school_manager_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), nullable=True, index=True
     )
+    # A secretary belongs to one institute. Managers select their active
+    # institute; services derive their data scope from these fields.
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    active_school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     roles: Mapped[list["Role"]] = relationship(

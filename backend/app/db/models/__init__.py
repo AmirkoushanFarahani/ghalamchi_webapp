@@ -27,7 +27,9 @@ from backend.app.db.models.school import (
     SchoolCost,
     SchoolCourse,
     SchoolExamPlan,
+    SchoolInstitute,
     SchoolRegistrationFees,
+    SchoolSpecialSupport,
     Student,
     StudentEnrollment,
 )
@@ -37,6 +39,8 @@ __all__ = [
     "SchoolCourse",
     "SchoolCost",
     "SchoolExamPlan",
+    "SchoolInstitute",
+    "SchoolSpecialSupport",
     "DiscountCode",
     "Student",
     "StudentEnrollment",

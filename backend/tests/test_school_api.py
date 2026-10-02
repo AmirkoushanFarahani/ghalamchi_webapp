@@ -101,6 +101,35 @@ def test_manager_courses_employee_enrollment_and_shared_student_view(client: Tes
     assert cleared.status_code == 200
 
 
+def test_second_institute_has_a_separate_secretary_and_student_data(client: TestClient) -> None:
+    manager, employee = school_users(client)
+    first_school = client.get("/api/v1/school/institutes", headers=manager)
+    assert first_school.status_code == 200
+    assert len(first_school.json()) == 1
+    second = client.post("/api/v1/school/institutes", headers=manager, json={"name": "شعبه دوم"})
+    assert second.status_code == 201
+    secretary = client.post(
+        f"/api/v1/school/institutes/{second.json()['id']}/secretaries",
+        headers=manager,
+        json={"first_name": "Second", "last_name": "Secretary", "email": "second@example.com", "password": PASSWORD},
+    )
+    assert secretary.status_code == 201
+    second_headers = login_headers(client, "second@example.com")
+    assert client.get("/api/v1/school/students", headers=second_headers).json() == []
+
+    course = client.post("/api/v1/school/courses", headers=manager, json={"name": "کلاس اول", "grade": "GRADE_7", "price": "1"})
+    assert course.status_code == 201
+    enrolled = client.post("/api/v1/school/students/enroll", headers=employee, json={
+        "full_name": "دانش‌آموز شعبه اول", "national_id": "9999999999", "birth_date": "2013-01-01", "grade": "GRADE_7",
+        "guardian_full_name": "ولی", "guardian_phone": "09120000000", "course_ids": [course.json()["id"]],
+    })
+    assert enrolled.status_code == 201
+    assert client.get("/api/v1/school/students", headers=second_headers).json() == []
+    comparison = client.get("/api/v1/school/institutes/comparison", headers=manager)
+    assert comparison.status_code == 200
+    assert {row["school_name"] for row in comparison.json()} == {"آموزشگاه اول", "شعبه دوم"}
+
+
 def test_employee_cannot_choose_course_from_another_grade(client: TestClient) -> None:
     manager, employee = school_users(client)
     course = client.post(
@@ -279,6 +308,26 @@ def test_only_manager_can_edit_exam_plan(client: TestClient) -> None:
         },
     )
     assert denied.status_code == 403
+
+
+def test_only_manager_can_create_exam_plan(client: TestClient) -> None:
+    manager, employee = school_users(client)
+    body = {
+        "grade": "GRADE_6",
+        "academic_track": None,
+        "plan_code": "CUSTOM-26",
+        "exam_count": 20,
+        "exam_unit_price": "400000",
+        "exam_total": "8000000",
+        "book_voucher_amount": "1500000",
+        "book_voucher_discount": "200000",
+        "is_active": True,
+    }
+    created = client.post("/api/v1/school/exam-plans", headers=manager, json=body)
+    assert created.status_code == 201
+    assert created.json()["plan_code"] == "CUSTOM-26"
+    assert created.json()["grade"] == "GRADE_6"
+    assert client.post("/api/v1/school/exam-plans", headers=employee, json=body).status_code == 403
 
 
 def test_check_cost_requires_and_returns_a_due_date(client: TestClient) -> None:

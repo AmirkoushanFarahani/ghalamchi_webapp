@@ -368,10 +368,12 @@ class MLService:
     ) -> tuple[MLPrediction, dict[str, Any]]:
         """Group a school student using their own enrolment and payment history."""
         workspace_owner_id = actor.school_manager_id or actor.id
+        school_institute_id = actor.school_institute_id or actor.active_school_institute_id
         student = self.session.scalar(
             select(Student).where(
                 Student.id == student_id,
                 Student.workspace_owner_id == workspace_owner_id,
+                Student.school_institute_id == school_institute_id,
             )
         )
         if student is None:

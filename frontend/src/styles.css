@@ -163,3 +163,9 @@ input:hover, select:hover, textarea:hover { border-color: color-mix(in srgb,var(
 .party-autocomplete__option { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px; background: transparent; color: inherit; border: 1px solid currentColor; border-radius: 8px; cursor: pointer; text-align: start; font: inherit; }
 .party-autocomplete__option:hover, .party-autocomplete__option[aria-selected="true"] { background: rgba(52, 185, 133, .2); }
 .party-autocomplete__option small { opacity: .7; }
+.password-input { position: relative; }
+.password-input input { padding-right: 48px; }
+.password-input__toggle { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; display: grid; place-items: center; border: 0; border-radius: 8px; color: var(--muted); background: transparent; cursor: pointer; }
+.password-input__toggle:hover { color: var(--green); background: var(--green-faint); }
+.password-input__toggle:focus-visible { outline: 2px solid var(--green); outline-offset: 1px; }
+.password-input__toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

@@ -22,6 +22,7 @@ import type {
   ExamPlan,
   EnrollmentPayment,
   RegistrationFees,
+  SpecialSupport,
   Student,
 } from "../types/api";
 
@@ -68,6 +69,9 @@ export function CoursesPage() {
   const [open, setOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [editingExamPlan, setEditingExamPlan] = useState<ExamPlan | null>(null);
+  const [newExamPlan, setNewExamPlan] = useState(false);
+  const [editingSupport, setEditingSupport] = useState<SpecialSupport | null>(null);
+  const [supportOpen, setSupportOpen] = useState(false);
   const [discount, setDiscount] = useState(false);
   const courses = useAsync(() => api.get<Course[]>("/school/courses"), []);
   const examPlans = useAsync(() => api.get<ExamPlan[]>("/school/exam-plans"), []);
@@ -78,6 +82,7 @@ export function CoursesPage() {
         : Promise.resolve([]),
     [can],
   );
+  const supports = useAsync(() => api.get<SpecialSupport[]>("/school/special-supports"), []);
   return (
     <>
       <PageHeader
@@ -91,6 +96,18 @@ export function CoursesPage() {
                 onClick={() => setDiscount(true)}
               >
                 کد تخفیف جدید
+              </button>
+              <button
+                className="button button--secondary"
+                onClick={() => setSupportOpen(true)}
+              >
+                پشتیبان ویژه جدید
+              </button>
+              <button
+                className="button button--secondary"
+                onClick={() => setNewExamPlan(true)}
+              >
+                طرح آزمون و بن کتاب جدید
               </button>
               <button
                 className="button button--primary"
@@ -152,6 +169,54 @@ export function CoursesPage() {
           detail="مدیر باید ابتدا برای هر پایه دوره و شهریه ثبت کند."
         />
       )}
+      <section className="card">
+        <h2 className="card-title">پشتیبان ویژه</h2>
+        <p className="form-description">قیمت پشتیبان ویژه را مدیر تعیین می‌کند؛ مسئول ثبت‌نام در فرم ثبت‌نام فقط پشتیبان و بازه (ماهانه یا فصلی) را انتخاب می‌کند و مبلغ به فاکتور اضافه می‌شود.</p>
+        {supports.loading ? (
+          <LoadingState />
+        ) : supports.error ? (
+          <ErrorState message={supports.error} retry={supports.reload} />
+        ) : supports.data?.length ? (
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>نام پشتیبان</th>
+                  <th>قیمت یک ماه</th>
+                  <th>قیمت یک فصل</th>
+                  <th>وضعیت</th>
+                  {can("school:manage") && <th>عملیات</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {supports.data.map((support) => (
+                  <tr key={support.id}>
+                    <td>{support.name}</td>
+                    <td><Money value={support.monthly_price} /></td>
+                    <td><Money value={support.seasonal_price} /></td>
+                    <td><StatusBadge value={support.is_active ? "ACTIVE" : "INACTIVE"} /></td>
+                    {can("school:manage") && (
+                      <td>
+                        <button
+                          className="button button--secondary button--small"
+                          onClick={() => setEditingSupport(support)}
+                        >
+                          ویرایش قیمت
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            title="پشتیبان ویژه‌ای تعریف نشده است"
+            detail="مدیر با دکمه «پشتیبان ویژه جدید» نام و قیمت ماهانه/فصلی را ثبت می‌کند."
+          />
+        )}
+      </section>
       <section className="card">
         <h2 className="card-title">طرح‌های آزمون و بن کتاب</h2>
         <p className="form-description">کاتالوگ قیمت بر اساس پایه و رشته دانش‌آموز است. مسئول ثبت‌نام فقط طرح مناسب را انتخاب می‌کند و امکان تغییر مبلغ ندارد.</p>
@@ -223,6 +288,29 @@ export function CoursesPage() {
           saved={() => {
             setEditingExamPlan(null);
             void examPlans.reload();
+          }}
+        />
+      )}
+      {newExamPlan && (
+        <ExamPlanForm
+          close={() => setNewExamPlan(false)}
+          saved={() => {
+            setNewExamPlan(false);
+            void examPlans.reload();
+          }}
+        />
+      )}
+      {(supportOpen || editingSupport) && (
+        <SpecialSupportForm
+          support={editingSupport ?? undefined}
+          close={() => {
+            setSupportOpen(false);
+            setEditingSupport(null);
+          }}
+          saved={() => {
+            setSupportOpen(false);
+            setEditingSupport(null);
+            void supports.reload();
           }}
         />
       )}
@@ -301,21 +389,83 @@ function CourseForm({
     </Modal>
   );
 }
+function SpecialSupportForm({
+  support,
+  close,
+  saved,
+}: {
+  support?: SpecialSupport;
+  close: () => void;
+  saved: () => void;
+}) {
+  const [monthlyPrice, setMonthlyPrice] = useState(String(support?.monthly_price ?? ""));
+  const [seasonalPrice, setSeasonalPrice] = useState(String(support?.seasonal_price ?? ""));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const f = new FormData(e.currentTarget);
+    setBusy(true);
+    setError("");
+    try {
+      const data = {
+        name: String(f.get("name")),
+        monthly_price: monthlyPrice || "0",
+        seasonal_price: seasonalPrice || "0",
+        ...(support ? { is_active: f.has("is_active") } : {}),
+      };
+      if (support) await api.patch(`/school/special-supports/${support.id}`, data);
+      else await api.post("/school/special-supports", data);
+      saved();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "ثبت پشتیبان ویژه ناموفق بود.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <Modal open title={support ? "ویرایش قیمت پشتیبان ویژه" : "قیمت پشتیبان ویژه"} onClose={close}>
+      <form className="form" onSubmit={submit}>
+        {error && <p className="alert alert--error">{error}</p>}
+        <p className="form-description">
+          فقط مدیر قیمت پشتیبان ویژه را تعیین می‌کند؛ مسئول ثبت‌نام در فرم ثبت‌نام فقط پشتیبان و بازه را انتخاب می‌کند.
+        </p>
+        <Field label="نام پشتیبان">
+          <input name="name" required defaultValue={support?.name} placeholder="مثلاً پشتیبان ریاضی" />
+        </Field>
+        <Field label="قیمت یک ماه (ریال)">
+          <MoneyInput value={monthlyPrice} onValueChange={setMonthlyPrice} min="0" required />
+        </Field>
+        <Field label="قیمت یک فصل، مانند تابستان یا زمستان (ریال)">
+          <MoneyInput value={seasonalPrice} onValueChange={setSeasonalPrice} min="0" required />
+        </Field>
+        {support && <label className="check"><input name="is_active" type="checkbox" defaultChecked={support.is_active} /> پشتیبان فعال است</label>}
+        <div className="form-actions">
+          <button type="button" className="button button--secondary" onClick={close} disabled={busy}>انصراف</button>
+          <button className="button button--primary" disabled={busy}>
+            {busy ? "در حال ذخیره…" : support ? "ذخیره تغییرات" : "ثبت پشتیبان"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
 function ExamPlanForm({
   plan,
   close,
   saved,
 }: {
-  plan: ExamPlan;
+  plan?: ExamPlan;
   close: () => void;
   saved: () => void;
 }) {
-  const [grade, setGrade] = useState(plan.grade);
-  const [track, setTrack] = useState(plan.academic_track ?? "");
-  const [unitPrice, setUnitPrice] = useState(String(plan.exam_unit_price));
-  const [examTotal, setExamTotal] = useState(String(plan.exam_total));
-  const [voucherAmount, setVoucherAmount] = useState(String(plan.book_voucher_amount));
-  const [voucherDiscount, setVoucherDiscount] = useState(String(plan.book_voucher_discount));
+  const [grade, setGrade] = useState<string>(plan?.grade ?? "");
+  const [track, setTrack] = useState(plan?.academic_track ?? "");
+  const [unitPrice, setUnitPrice] = useState(String(plan?.exam_unit_price ?? ""));
+  const [examTotal, setExamTotal] = useState(String(plan?.exam_total ?? ""));
+  const [voucherAmount, setVoucherAmount] = useState(String(plan?.book_voucher_amount ?? ""));
+  const [voucherDiscount, setVoucherDiscount] = useState(String(plan?.book_voucher_discount ?? ""));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -325,7 +475,7 @@ function ExamPlanForm({
     setBusy(true);
     setError("");
     try {
-      await api.patch(`/school/exam-plans/${plan.id}`, {
+      const data = {
         grade,
         academic_track: track || null,
         plan_code: String(form.get("plan_code")),
@@ -335,7 +485,9 @@ function ExamPlanForm({
         book_voucher_amount: voucherAmount || "0",
         book_voucher_discount: voucherDiscount || "0",
         is_active: form.has("is_active"),
-      });
+      };
+      if (plan) await api.patch(`/school/exam-plans/${plan.id}`, data);
+      else await api.post("/school/exam-plans", data);
       saved();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "ذخیره طرح آزمون ناموفق بود.");
@@ -345,12 +497,12 @@ function ExamPlanForm({
   }
 
   return (
-    <Modal open title="ویرایش طرح آزمون و بن کتاب" onClose={close}>
+    <Modal open title={plan ? "ویرایش طرح آزمون و بن کتاب" : "طرح آزمون و بن کتاب جدید"} onClose={close}>
       <form className="form" onSubmit={submit}>
         {error && <p className="alert alert--error">{error}</p>}
-        <p className="form-description">این تغییر فقط برای ثبت‌نام‌های جدید اعمال می‌شود؛ مبالغ ثبت‌شده در پرونده دانش‌آموزان قبلی تغییر نمی‌کند.</p>
+        <p className="form-description">{plan ? "این تغییر فقط برای ثبت‌نام‌های جدید اعمال می‌شود؛ مبالغ ثبت‌شده در پرونده دانش‌آموزان قبلی تغییر نمی‌کند." : "پس از ثبت، مسئول ثبت‌نام فقط می‌تواند این طرح و مبلغ‌های مدیر تعیین‌شده را برای دانش‌آموز انتخاب کند."}</p>
         <div className="form-grid">
-          <GradeField value={grade} onChange={(value) => setGrade(value as ExamPlan["grade"])} />
+          <GradeField value={grade} onChange={setGrade} />
           <Field label="رشته تحصیلی">
             <select value={track} onChange={(event) => setTrack(event.target.value)}>
               <option value="">بدون رشته</option>
@@ -358,10 +510,10 @@ function ExamPlanForm({
             </select>
           </Field>
           <Field label="کد طرح">
-            <input name="plan_code" dir="ltr" defaultValue={plan.plan_code} required />
+            <input name="plan_code" dir="ltr" defaultValue={plan?.plan_code} required />
           </Field>
           <Field label="تعداد آزمون">
-            <input name="exam_count" type="number" min="1" defaultValue={plan.exam_count} required />
+            <input name="exam_count" type="number" min="1" defaultValue={plan?.exam_count ?? 1} required />
           </Field>
         </div>
         <div className="form-grid form-grid--2">
@@ -378,10 +530,10 @@ function ExamPlanForm({
             <MoneyInput value={voucherDiscount} onValueChange={setVoucherDiscount} min="0" required />
           </Field>
         </div>
-        <label className="check"><input name="is_active" type="checkbox" defaultChecked={plan.is_active} /> طرح فعال است</label>
+        <label className="check"><input name="is_active" type="checkbox" defaultChecked={plan?.is_active ?? true} /> طرح فعال است</label>
         <div className="form-actions">
           <button type="button" className="button button--secondary" onClick={close} disabled={busy}>انصراف</button>
-          <button className="button button--primary" disabled={busy}>{busy ? "در حال ذخیره…" : "ذخیره تغییرات"}</button>
+          <button className="button button--primary" disabled={busy}>{busy ? "در حال ذخیره…" : plan ? "ذخیره تغییرات" : "ثبت طرح"}</button>
         </div>
       </form>
     </Modal>
@@ -623,6 +775,8 @@ function FourSectionStudentRegistrationForm({
   const [bookIncluded, setBookIncluded] = useState(false);
   const [examIncluded, setExamIncluded] = useState(false);
   const [examPlanId, setExamPlanId] = useState("");
+  const [supportId, setSupportId] = useState("");
+  const [supportPeriod, setSupportPeriod] = useState<"MONTHLY" | "SEASONAL">("MONTHLY");
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
   const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHECK" | "INSTALLMENT">("CASH");
   const [installmentCount, setInstallmentCount] = useState(1);
@@ -632,6 +786,10 @@ function FourSectionStudentRegistrationForm({
   const [busy, setBusy] = useState(false);
   const courses = useAsync(() => api.get<Course[]>("/school/courses"), []);
   const examPlans = useAsync(() => api.get<ExamPlan[]>("/school/exam-plans"), []);
+  const specialSupports = useAsync(
+    () => api.get<SpecialSupport[]>("/school/special-supports"),
+    [],
+  );
   const availableCourses = useMemo(
     () => courses.data?.filter((course) => course.grade === grade && course.is_active) ?? [],
     [courses.data, grade],
@@ -646,7 +804,12 @@ function FourSectionStudentRegistrationForm({
     ? Number(selectedExamPlan.book_voucher_amount) - Number(selectedExamPlan.book_voucher_discount)
     : 0;
   const examPrice = examIncluded ? Number(selectedExamPlan?.exam_total ?? 0) : 0;
-  const total = classTotal + bookPrice + examPrice;
+  const activeSupports = (specialSupports.data ?? []).filter((item) => item.is_active);
+  const selectedSupport = activeSupports.find((item) => item.id === supportId);
+  const specialSupportPrice = selectedSupport
+    ? Number(supportPeriod === "SEASONAL" ? selectedSupport.seasonal_price : selectedSupport.monthly_price)
+    : 0;
+  const total = classTotal + bookPrice + examPrice + specialSupportPrice;
   const needsAcademicTrack = ["GRADE_10", "GRADE_11", "GRADE_12"].includes(grade);
   const schedule = useMemo(() => buildInstallmentSchedule(total, installmentCount, firstInstallmentDate), [total, installmentCount, firstInstallmentDate]);
 
@@ -691,6 +854,9 @@ function FourSectionStudentRegistrationForm({
         book_voucher_eligible: bookIncluded,
         exam_registered: examIncluded,
         exam_plan_id: examPlanId || null,
+        special_support: supportId
+          ? { support_id: supportId, period: supportPeriod }
+          : null,
         guardian_full_name: form.get("guardian_full_name"),
         guardian_phone: form.get("guardian_phone"),
         address: form.get("address") || null,
@@ -744,10 +910,29 @@ function FourSectionStudentRegistrationForm({
         </section>
 
         <section className="card">
+          <h2 className="card-title">پشتیبان ویژه (اختیاری)</h2>
+          {specialSupports.loading ? <LoadingState /> : specialSupports.error ? <ErrorState message={specialSupports.error} retry={specialSupports.reload} /> : activeSupports.length ? <div className="form-grid form-grid--2">
+            <Field label="انتخاب پشتیبان ویژه">
+              <select value={supportId} onChange={(event) => setSupportId(event.target.value)} disabled={busy}>
+                <option value="">بدون پشتیبان ویژه</option>
+                {activeSupports.map((support) => <option key={support.id} value={support.id}>{support.name}</option>)}
+              </select>
+            </Field>
+            <Field label="بازه">
+              <select value={supportPeriod} onChange={(event) => setSupportPeriod(event.target.value as "MONTHLY" | "SEASONAL")} disabled={busy || !supportId}>
+                <option value="MONTHLY">ماهانه</option>
+                <option value="SEASONAL">فصلی</option>
+              </select>
+            </Field>
+          </div> : <p className="alert alert--warning">هنوز پشتیبان ویژه‌ای توسط مدیر تعریف نشده است.</p>}
+          {selectedSupport && <div className="detail-grid"><p>مبلغ پشتیبان ویژه: <Money value={specialSupportPrice} /></p></div>}
+        </section>
+
+        <section className="card">
           <h2 className="card-title">۳. کلاس‌ها</h2>
           {!grade ? <p className="form-description">ابتدا پایه تحصیلی دانش‌آموز را انتخاب کنید.</p> : courses.loading ? <LoadingState /> : availableCourses.length ? <div className="course-picker">{availableCourses.map((course) => <label key={course.id} className="course-choice"><input type="checkbox" checked={selectedCourses.includes(course.id)} onChange={() => toggleCourse(course.id)} disabled={busy} /><span><strong>{course.name}</strong>{course.instructor_name && <small>دبیر: {course.instructor_name}</small>}</span><Money value={course.price} /></label>)}</div> : <p className="alert alert--warning">برای این پایه، کلاسی توسط مدیر تعریف نشده است.</p>}
           <Field label="کد تخفیف (اختیاری)"><input name="discount_code" dir="ltr" placeholder="کد را وارد کنید" disabled={busy} /></Field>
-          <div className="detail-grid"><p>جمع کلاس‌ها: <Money value={classTotal} /></p><p>آزمون: <Money value={examPrice} /></p><p>کتاب: <Money value={bookPrice} /></p><p><strong>جمع فاکتور پیش از تخفیف: <Money value={total} /></strong></p></div>
+          <div className="detail-grid"><p>جمع کلاس‌ها: <Money value={classTotal} /></p><p>آزمون: <Money value={examPrice} /></p><p>کتاب: <Money value={bookPrice} /></p><p>پشتیبان ویژه: <Money value={specialSupportPrice} /></p><p><strong>جمع فاکتور پیش از تخفیف: <Money value={total} /></strong></p></div>
         </section>
 
         <section className="card">
