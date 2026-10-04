@@ -29,9 +29,6 @@ ml/generated/
 ml/models/**
 !ml/models/.gitkeep
 
-# The frontend is built from its own context and is not needed by the backend.
-frontend/
-
 # Local data and generated verification output are never backend build inputs.
 backups/
 cloudflared.exe.exe
