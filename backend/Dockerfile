@@ -14,4 +14,4 @@ RUN groupadd --system azari \
 USER azari
 
 EXPOSE 8000
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic -c /app/backend/alembic.ini upgrade head && python -m backend.app.db.bootstrap && python -m backend.scripts.demo_database ensure && exec uvicorn backend.app.main:app --host 0.0.0.0 --port 8000"]

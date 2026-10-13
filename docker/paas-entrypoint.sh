@@ -15,4 +15,7 @@ if [ "${RUN_MIGRATIONS}" = "true" ]; then
     "python -m backend.app.db.bootstrap"
 fi
 
+su --shell /bin/sh azari --command \
+  "python -m backend.scripts.demo_database ensure"
+
 exec supervisord --nodaemon --configuration /etc/supervisor/supervisord.conf

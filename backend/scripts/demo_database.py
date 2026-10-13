@@ -142,8 +142,25 @@ def import_demo() -> None:
     print("Demo school database imported successfully.")
 
 
+def ensure_demo() -> None:
+    """Seed once at Docker startup when the deployer supplies a demo password."""
+    if not os.environ.get("DEMO_IMPORT_PASSWORD"):
+        print("Demo startup import skipped: DEMO_IMPORT_PASSWORD is not set.")
+        return
+    data = json.loads(gzip.decompress(base64.b64decode(SNAPSHOT.read_text(encoding="ascii"))))
+    emails = [user["email"] for user in data["users"]]
+    with SessionLocal() as session:
+        existing = set(session.scalars(select(User.email).where(User.email.in_(emails))))
+    if existing == set(emails):
+        print("Demo accounts already exist; existing data and passwords were preserved.")
+        return
+    if existing:
+        raise ValueError("Only some demo accounts exist; automatic import cannot overwrite them")
+    import_demo()
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("export", "import"))
+    parser.add_argument("operation", choices=("export", "import", "ensure"))
     args = parser.parse_args()
-    export_demo() if args.operation == "export" else import_demo()
+    {"export": export_demo, "import": import_demo, "ensure": ensure_demo}[args.operation]()

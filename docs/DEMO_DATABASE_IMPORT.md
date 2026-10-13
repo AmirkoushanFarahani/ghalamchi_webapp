@@ -15,6 +15,17 @@ All inserts occur in one transaction; a failure rolls them back.
 
 ## Docker server
 
+Docker now imports the demo automatically at startup after migrations and role
+bootstrap. Set `DEMO_IMPORT_PASSWORD` in the server environment to a private
+password of 12–128 characters, then rebuild/redeploy from GitHub. It imports into
+the database specified by `DATABASE_URL`, not a database baked into the image.
+All three demo accounts receive the password you set. Future restarts skip the
+import and preserve existing passwords, edits, and data. Remove the environment
+variable after the first successful import if desired.
+
+No separate import command is needed for normal Docker deployment. The following
+command remains available for a manual import:
+
 Replace `YOUR_BACKEND_CONTAINER` with the actual server container name. Run on
 the server, not the local computer:
 
@@ -42,5 +53,5 @@ python -c "import getpass,os; os.environ['DEMO_IMPORT_PASSWORD']=getpass.getpass
 Their original institute assignments are preserved. Use the password you chose
 at the import prompt. The old local password is not transferred.
 
-This is a demo-data transfer, not a backup of the entire database. Merely
-pulling GitHub or rebuilding the app does not import it automatically.
+This is a demo-data transfer, not a backup of the entire database. Automatic
+startup import requires `DEMO_IMPORT_PASSWORD` to be configured on the server.

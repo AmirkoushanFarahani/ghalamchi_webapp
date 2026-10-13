@@ -24,7 +24,7 @@ services:
       DATABASE_URL: ${DATABASE_URL:?Set DATABASE_URL in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       ML_MODEL_DIR: /app/ml/models
-    command: ["sh", "-c", "alembic -c /app/backend/alembic.ini upgrade head && python -m backend.app.db.bootstrap && uvicorn backend.app.main:app --host 0.0.0.0 --port 8000"]
+    command: ["sh", "-c", "alembic -c /app/backend/alembic.ini upgrade head && python -m backend.app.db.bootstrap && python -m backend.scripts.demo_database ensure && exec uvicorn backend.app.main:app --host 0.0.0.0 --port 8000"]
     volumes:
       - ./ml/models:/app/ml/models:ro
     ports:
