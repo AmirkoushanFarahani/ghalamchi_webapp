@@ -20,6 +20,7 @@ FROM python:3.12-slim AS runtime
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PORT=8080 \
+    CORS_ORIGINS='["https://inkcollection.ir","https://www.inkcollection.ir"]' \
     RUN_MIGRATIONS=true
 
 WORKDIR /app

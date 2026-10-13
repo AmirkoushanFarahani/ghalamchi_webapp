@@ -1,5 +1,5 @@
 import type { ApiErrorBody, RegisterRequest, TokenResponse, User } from "../types/api";
-export const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8100/api/v1";
+export const API_URL = import.meta.env.VITE_API_URL ?? "/api/v1";
 const messages: Record<number, string> = { 400: "اطلاعات درخواست نامعتبر است.", 401: "نشست شما پایان یافته است. لطفاً دوباره وارد شوید.", 403: "شما اجازه انجام این عملیات را ندارید.", 404: "اطلاعات درخواستی پیدا نشد.", 409: "این عملیات با وضعیت فعلی اطلاعات سازگار نیست.", 422: "لطفاً اطلاعات واردشده را بررسی کنید.", 500: "خطایی در سرور رخ داده است. کمی بعد دوباره تلاش کنید.", 503: "سرویس موردنظر اکنون در دسترس نیست." };
 export class ApiError extends Error { constructor(public readonly status: number, message: string, public readonly body?: ApiErrorBody) { super(message); this.name = "ApiError"; } }
 let tokenProvider: () => string | null = () => sessionStorage.getItem("azari_token");

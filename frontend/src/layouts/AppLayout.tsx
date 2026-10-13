@@ -29,7 +29,7 @@ export const navigation: Array<NavItem | NavGroup> = [
 ];
 export function navigationForBusiness(category: BusinessCategory) {
   if (category === "EDUCATION") return [
-    { label: "داشبورد", path: "/dashboard", permission: "reports:read" },
+    { label: "داشبورد", path: "/dashboard", permission: "school:read" },
     { label: "ثبت‌نام", items: [
       { label: "دانش‌آموزان", path: "/students", permission: "school:read" },
       { label: "پرونده مشتریان", path: "/student-records", permission: "school:read" },

@@ -14,6 +14,7 @@ import { AppLayout } from "./layouts/AppLayout";
 import { SettingsPage, UsersPage } from "./pages/AdminPages";
 import { AiDashboardPage, ClassificationPage, ForecastPage, ModelsPage, RiskPage, SegmentsPage } from "./pages/AiPages";
 import { DashboardPage } from "./pages/DashboardPage";
+import { SecretaryDashboardPage } from "./pages/SecretaryDashboardPage";
 import { CustomersPage } from "./pages/CustomersPage";
 import { BillPaymentsPage, BillsPage } from "./pages/BillsPages";
 import { LoginPage, RegisterPage } from "./pages/LoginPage";
@@ -34,8 +35,8 @@ export const routes: Route[] = [
   { path: "/school-accounting/reports", component: SchoolReportPage, permission: "school:manage" },
   { path: "/school-costs", component: SchoolCostsPage, permission: "school:manage" },
   { path: "/school-institutes", component: SchoolInstitutesPage, permission: "school:manage" },
-  { path: "/tuition/registered", component: RegisteredTuitionPage, permission: "school:read" },
-  { path: "/tuition/received", component: ReceivedTuitionPage, permission: "school:read" },
+  { path: "/tuition/registered", component: RegisteredTuitionPage, permission: "school:manage" },
+  { path: "/tuition/received", component: ReceivedTuitionPage, permission: "school:manage" },
   { path: "/tuition/outstanding", component: OutstandingTuitionPage, permission: "school:read" },
   { path: "/tuition/due-payments", component: DuePaymentsPage, permission: "school:read" },
   { path: "/expenses", component: ExpensesPage, permission: "bills:read" },
@@ -45,4 +46,4 @@ export const routes: Route[] = [
 ];
 function MessagePage({ forbidden = false }: { forbidden?: boolean }) { return <div className="message-page"><span>{forbidden ? "!" : "؟"}</span><h1>{forbidden ? "دسترسی مجاز نیست" : "صفحه پیدا نشد"}</h1><p>{forbidden ? "نقش کاربری شما اجازه مشاهده این بخش را ندارد." : "نشانی واردشده در سامانه وجود ندارد."}</p><Link to="/dashboard" className="button button--primary">بازگشت به داشبورد</Link></div>; }
 function Redirect({ to }: { to: string }) { const { navigate } = useRouter(); useEffect(() => navigate(to, true), [navigate, to]); return <LoadingState label="در حال انتقال…"/>; }
-export default function App() { const { user, loading, can } = useAuth(); const { path } = useRouter(); if (loading) return <main className="boot"><div className="login-mark">آ</div><LoadingState label="در حال بررسی حساب کاربری…"/></main>; if (!user) return path === "/login" ? <LoginPage/> : path === "/register" ? <RegisterPage/> : <Redirect to="/login"/>; if (path === "/login" || path === "/register" || path === "/") return <Redirect to="/dashboard"/>; const route = routes.find((r) => r.prefix ? path.startsWith(r.path) : path === r.path); const Page = route?.component; return <AppLayout>{!route ? <MessagePage/> : route.permission && !can(route.permission) ? <MessagePage forbidden/> : Page ? <Page/> : null}</AppLayout>; }
+export default function App() { const { user, loading, can } = useAuth(); const { path } = useRouter(); if (loading) return <main className="boot"><div className="login-mark">آ</div><LoadingState label="در حال بررسی حساب کاربری…"/></main>; if (!user) return path === "/login" ? <LoginPage/> : path === "/register" ? <RegisterPage/> : <Redirect to="/login"/>; if (path === "/login" || path === "/register" || path === "/") return <Redirect to="/dashboard"/>; if (path === "/dashboard" && user.business_category === "EDUCATION" && can("school:read") && !can("school:manage")) return <AppLayout><SecretaryDashboardPage/></AppLayout>; const route = routes.find((r) => r.prefix ? path.startsWith(r.path) : path === r.path); const Page = route?.component; return <AppLayout>{!route ? <MessagePage/> : route.permission && !can(route.permission) ? <MessagePage forbidden/> : Page ? <Page/> : null}</AppLayout>; }

@@ -1,6 +1,6 @@
 server {
   listen ${PORT};
-  server_name _;
+  server_name inkcollection.ir www.inkcollection.ir _;
 
   root /var/www/azari;
   index index.html;

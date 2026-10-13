@@ -3,7 +3,7 @@ from decimal import Decimal
 from typing import Annotated, Literal, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -50,6 +50,10 @@ from backend.app.schemas.school import (
     SchoolInstituteSelect,
     SchoolSecretaryAssign,
     SchoolSecretaryCreate,
+    SchoolSecretaryPasswordReset,
+    SchoolSecretaryRead,
+    SchoolSecretaryUpdate,
+    SchoolSecretaryStatusUpdate,
     SpecialSupportCreate,
     SpecialSupportRead,
     SpecialSupportUpdate,
@@ -162,6 +166,21 @@ def select_institute(
         raise HTTPException(404, str(exc)) from exc
 
 
+@router.patch("/institutes/{school_id}", response_model=SchoolInstituteRead)
+def rename_institute(
+    school_id: UUID,
+    data: SchoolInstituteCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolInstituteRead:
+    try:
+        return institute_read(session, service(session, actor).rename_institute(school_id, data))
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
 @router.patch("/institutes/{school_id}/secretary", response_model=SchoolInstituteRead)
 def assign_secretary(
     school_id: UUID,
@@ -191,6 +210,56 @@ def create_secretary(
         raise HTTPException(409, str(exc)) from exc
     except SchoolError as exc:
         raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/institutes/{school_id}/secretaries", response_model=list[SchoolSecretaryRead])
+def list_secretaries(
+    school_id: UUID, session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> list[User]:
+    try:
+        return service(session, actor).list_secretaries(school_id)
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.patch("/institutes/{school_id}/secretaries/{secretary_id}", response_model=SchoolSecretaryRead)
+def update_secretary(
+    school_id: UUID, secretary_id: UUID, data: SchoolSecretaryUpdate, session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> User:
+    try:
+        return service(session, actor).update_secretary(school_id, secretary_id, data)
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.patch("/institutes/{school_id}/secretaries/{secretary_id}/status", response_model=SchoolSecretaryRead)
+def set_secretary_status(
+    school_id: UUID, secretary_id: UUID, data: SchoolSecretaryStatusUpdate, session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> User:
+    try:
+        return service(session, actor).set_secretary_status(school_id, secretary_id, data.is_active)
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.patch("/institutes/{school_id}/secretaries/{secretary_id}/password", status_code=204)
+def reset_secretary_password(
+    school_id: UUID,
+    secretary_id: UUID,
+    data: SchoolSecretaryPasswordReset,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> Response:
+    try:
+        service(session, actor).reset_secretary_password(school_id, secretary_id, data)
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return Response(status_code=204)
 
 
 @router.get("/institutes/comparison", response_model=list[SchoolComparisonRead])

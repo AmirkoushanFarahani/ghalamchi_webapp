@@ -10,6 +10,123 @@ from sqlalchemy import select
 PASSWORD = "school-demo-password-123"
 
 
+def test_manager_can_rename_only_owned_institute(client: TestClient) -> None:
+    manager, employee = school_users(client)
+    schools = client.get("/api/v1/school/institutes", headers=manager).json()
+    school_id = schools[0]["id"]
+    url = f"/api/v1/school/institutes/{school_id}"
+    renamed = client.patch(url, headers=manager, json={"name": "  مرکز جدید  "})
+    assert renamed.status_code == 200
+    assert renamed.json()["name"] == "مرکز جدید"
+    assert client.get("/api/v1/school/institutes", headers=employee).json()[0]["name"] == "مرکز جدید"
+    assert client.patch(url, headers=employee, json={"name": "غیرمجاز"}).status_code == 403
+    assert client.patch(url, headers=manager, json={"name": "   "}).status_code == 422
+    second = client.post("/api/v1/school/institutes", headers=manager, json={"name": "مرکز دوم"})
+    assert second.status_code == 201
+    assert client.patch(url, headers=manager, json={"name": "مرکز دوم"}).status_code == 409
+    assert client.get("/api/v1/school/institutes", headers=manager).json()[0]["name"] == "مرکز جدید"
+    with SessionLocal.begin() as session:
+        role = session.scalar(select(Role).where(Role.name == "MANAGER"))
+        session.add(User(email="other.manager@example.com", password_hash=hash_password(PASSWORD),
+                         first_name="Other", last_name="Manager", business_category="EDUCATION", roles=[role]))
+    other = login_headers(client, "other.manager@example.com")
+    assert client.patch(url, headers=other, json={"name": "دسترسی غیرمجاز"}).status_code == 404
+
+
+def test_secretary_password_reset_is_scoped_to_creating_manager(client: TestClient) -> None:
+    manager, employee = school_users(client)
+    school = client.get("/api/v1/school/institutes", headers=manager).json()[0]
+    created = client.post(
+        f"/api/v1/school/institutes/{school['id']}/secretaries", headers=manager,
+        json={"first_name": "Test", "last_name": "Secretary",
+              "email": "reset.secretary@example.com", "password": PASSWORD},
+    )
+    assert created.status_code == 201
+    with SessionLocal() as session:
+        secretary = session.scalar(select(User).where(User.email == "reset.secretary@example.com"))
+        secretary_id = str(secretary.id)
+    url = f"/api/v1/school/institutes/{school['id']}/secretaries/{secretary_id}/password"
+    new_password = "new-secretary-credential-456"
+    assert client.patch(url, headers=employee, json={"password": new_password}).status_code == 403
+    assert client.patch(url, json={"password": new_password}).status_code == 401
+    assert client.patch(url, headers=manager, json={"password": "short"}).status_code == 422
+    with SessionLocal.begin() as session:
+        role = session.scalar(select(Role).where(Role.name == "MANAGER"))
+        session.add(User(email="outsider@example.com", password_hash=hash_password(PASSWORD),
+                         first_name="Other", last_name="Manager", business_category="EDUCATION", roles=[role]))
+    outsider = login_headers(client, "outsider@example.com")
+    assert client.patch(url, headers=outsider, json={"password": new_password}).status_code == 404
+    second_school = client.post("/api/v1/school/institutes", headers=manager, json={"name": "مرکز دوم"}).json()
+    wrong_school_url = f"/api/v1/school/institutes/{second_school['id']}/secretaries/{secretary_id}/password"
+    assert client.patch(wrong_school_url, headers=manager, json={"password": new_password}).status_code == 404
+    assert client.patch(url, headers=manager, json={"password": new_password}).status_code == 204
+    assert client.post("/api/v1/auth/login", json={"email": "reset.secretary@example.com", "password": PASSWORD}).status_code == 401
+    assert client.post("/api/v1/auth/login", json={"email": "reset.secretary@example.com", "password": new_password}).status_code == 200
+
+
+def test_secretary_cannot_read_institute_financial_reports(client: TestClient) -> None:
+    manager, employee = school_users(client)
+    me = client.get("/api/v1/auth/me", headers=employee).json()
+    assert "reports:read" not in me["permissions"]
+    for path in (
+        "/api/v1/dashboard", "/api/v1/reports/income-statement",
+        "/api/v1/reports/revenue", "/api/v1/reports/balance-sheet",
+        "/api/v1/reports/payables", "/api/v1/reports/cash-flow",
+        "/api/v1/school/institutes/comparison", "/api/v1/school/costs",
+    ):
+        assert client.get(path, headers=employee).status_code == 403, path
+    assert client.get("/api/v1/school/students", headers=employee).status_code == 200
+    assert client.get("/api/v1/school/courses", headers=employee).status_code == 200
+    assert client.get("/api/v1/dashboard", headers=manager).status_code == 200
+    assert client.get("/api/v1/school/institutes/comparison", headers=manager).status_code == 200
+
+
+def test_manager_lists_edits_and_dismisses_own_secretaries(client: TestClient) -> None:
+    manager, employee = school_users(client)
+    school = client.get("/api/v1/school/institutes", headers=employee).json()[0]
+    base = f"/api/v1/school/institutes/{school['id']}/secretaries"
+    initial = client.get(base, headers=manager)
+    assert initial.status_code == 200
+    assert [row["email"] for row in initial.json()] == ["employee@example.com"]
+    secretary_id = initial.json()[0]["id"]
+    assert "password_hash" not in initial.text
+    created = client.post(base, headers=manager, json={
+        "first_name": "Second", "last_name": "Secretary", "email": "second.secretary@example.com", "password": PASSWORD,
+    })
+    assert created.status_code == 201
+    assert len(client.get(base, headers=manager).json()) == 2
+    details = {"first_name": "Updated", "last_name": "Secretary", "email": "updated.secretary@example.com"}
+    url = f"{base}/{secretary_id}"
+    assert client.patch(url, headers=employee, json=details).status_code == 403
+    assert client.get(base, headers=employee).status_code == 403
+    with SessionLocal.begin() as session:
+        role = session.scalar(select(Role).where(Role.name == "MANAGER"))
+        session.add(User(email="staff.outsider@example.com", password_hash=hash_password(PASSWORD),
+                         first_name="Other", last_name="Manager", business_category="EDUCATION", roles=[role]))
+    outsider = login_headers(client, "staff.outsider@example.com")
+    assert client.get(base, headers=outsider).status_code == 404
+    assert client.patch(url, headers=outsider, json=details).status_code == 404
+    assert client.patch(f"{url}/status", headers=outsider, json={"is_active": False}).status_code == 404
+    conflict = client.patch(url, headers=manager, json={**details, "email": "manager@example.com"})
+    assert conflict.status_code == 409
+    assert client.patch(url, headers=manager, json=details).status_code == 200
+    assert client.post("/api/v1/auth/login", json={"email": "employee@example.com", "password": PASSWORD}).status_code == 401
+    updated_headers = login_headers(client, "updated.secretary@example.com")
+    disabled = client.patch(f"{url}/status", headers=manager, json={"is_active": False})
+    assert disabled.status_code == 200
+    assert disabled.json()["is_active"] is False
+    assert client.get("/api/v1/school/students", headers=updated_headers).status_code == 401
+    # This scenario makes more than five logins; isolate account-status checks
+    # from the separately tested authentication rate limiter.
+    client.app.state.auth_rate_limiter.clear()
+    assert client.post("/api/v1/auth/login", json={"email": "updated.secretary@example.com", "password": PASSWORD}).status_code == 401
+    listed = client.get(base, headers=manager).json()
+    assert len(listed) == 2
+    assert next(row for row in listed if row["id"] == secretary_id)["is_active"] is False
+    assert client.patch(f"{url}/status", headers=manager, json={"is_active": True}).status_code == 200
+    assert client.post("/api/v1/auth/login", json={"email": "updated.secretary@example.com", "password": PASSWORD}).status_code == 200
+
+
 def login_headers(client: TestClient, email: str) -> dict[str, str]:
     response = client.post("/api/v1/auth/login", json={"email": email, "password": PASSWORD})
     assert response.status_code == 200

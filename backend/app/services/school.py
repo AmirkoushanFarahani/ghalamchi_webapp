@@ -22,6 +22,7 @@ from backend.app.db.models import (
     Role,
 )
 from backend.app.core.passwords import hash_password
+from backend.app.repositories.audit import AuditRepository
 from backend.app.schemas.school import (
     CourseCreate,
     CourseUpdate,
@@ -34,6 +35,8 @@ from backend.app.schemas.school import (
     SchoolInstituteCreate,
     SchoolSecretaryAssign,
     SchoolSecretaryCreate,
+    SchoolSecretaryPasswordReset,
+    SchoolSecretaryUpdate,
     SpecialSupportUpdate,
     StudentEnrollmentCreate,
 )
@@ -118,6 +121,22 @@ class SchoolService:
             raise SchoolConflictError("An institute with this name already exists") from exc
         return school
 
+    def rename_institute(self, school_id: UUID, data: SchoolInstituteCreate) -> SchoolInstitute:
+        self._require_manager()
+        school = self.session.scalar(select(SchoolInstitute).where(
+            SchoolInstitute.id == school_id,
+            SchoolInstitute.manager_id == self.workspace_owner_id,
+        ))
+        if school is None:
+            raise SchoolError("School or institute was not found")
+        school.name = data.name
+        try:
+            self.session.commit()
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise SchoolConflictError("An institute with this name already exists") from exc
+        return school
+
     def select_institute(self, school_id: UUID) -> SchoolInstitute:
         self._require_manager()
         school = self.session.scalar(select(SchoolInstitute).where(
@@ -169,6 +188,71 @@ class SchoolService:
             self.session.rollback()
             raise SchoolConflictError("An account with this email already exists") from exc
         return secretary
+
+    def list_secretaries(self, school_id: UUID) -> list[User]:
+        self._require_manager()
+        if self.session.scalar(select(SchoolInstitute.id).where(
+            SchoolInstitute.id == school_id, SchoolInstitute.manager_id == self.workspace_owner_id
+        )) is None:
+            raise SchoolError("School or institute was not found")
+        return list(self.session.scalars(select(User).where(
+            User.school_manager_id == self.workspace_owner_id,
+            User.school_institute_id == school_id,
+            User.roles.any(Role.name == "EMPLOYEE"),
+        ).order_by(User.created_at, User.id)))
+
+    def _managed_secretary(self, school_id: UUID, secretary_id: UUID) -> User:
+        self._require_manager()
+        school = self.session.scalar(select(SchoolInstitute.id).where(
+            SchoolInstitute.id == school_id, SchoolInstitute.manager_id == self.workspace_owner_id
+        ))
+        secretary = self.session.scalar(select(User).where(
+            User.id == secretary_id, User.school_manager_id == self.workspace_owner_id,
+            User.school_institute_id == school_id, User.roles.any(Role.name == "EMPLOYEE"),
+        ).with_for_update())
+        if school is None or secretary is None:
+            raise SchoolError("School or secretary was not found in this manager workspace")
+        return secretary
+
+    def update_secretary(self, school_id: UUID, secretary_id: UUID, data: SchoolSecretaryUpdate) -> User:
+        secretary = self._managed_secretary(school_id, secretary_id)
+        secretary.first_name = data.first_name
+        secretary.last_name = data.last_name
+        secretary.email = str(data.email).casefold()
+        AuditRepository(self.session).record(
+            action="school.secretary.updated", resource_type="user",
+            resource_id=str(secretary.id), actor_id=self.actor.id, success=True,
+            details={"school_institute_id": str(school_id)},
+        )
+        try:
+            self.session.commit()
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise SchoolConflictError("An account with this email already exists") from exc
+        return secretary
+
+    def set_secretary_status(self, school_id: UUID, secretary_id: UUID, is_active: bool) -> User:
+        secretary = self._managed_secretary(school_id, secretary_id)
+        secretary.is_active = is_active
+        AuditRepository(self.session).record(
+            action="school.secretary.status_changed", resource_type="user",
+            resource_id=str(secretary.id), actor_id=self.actor.id, success=True,
+            details={"school_institute_id": str(school_id), "is_active": is_active},
+        )
+        self.session.commit()
+        return secretary
+
+    def reset_secretary_password(
+        self, school_id: UUID, secretary_id: UUID, data: SchoolSecretaryPasswordReset
+    ) -> None:
+        secretary = self._managed_secretary(school_id, secretary_id)
+        secretary.password_hash = hash_password(data.password)
+        AuditRepository(self.session).record(
+            action="school.secretary.credentials_reset", resource_type="user",
+            resource_id=str(secretary.id), actor_id=self.actor.id, success=True,
+            details={"school_institute_id": str(school_id)},
+        )
+        self.session.commit()
 
     def comparison(self) -> list[dict[str, object]]:
         self._require_manager()

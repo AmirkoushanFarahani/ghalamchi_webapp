@@ -328,6 +328,32 @@ class SchoolSecretaryCreate(BaseModel):
     password: str = Field(min_length=12, max_length=128)
 
 
+class SchoolSecretaryPasswordReset(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    password: str = Field(min_length=12, max_length=128)
+
+
+class SchoolSecretaryRead(ORMModel):
+    id: UUID
+    first_name: str
+    last_name: str
+    email: EmailStr | None
+    is_active: bool
+    last_login_at: datetime | None
+
+
+class SchoolSecretaryUpdate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    first_name: str = Field(min_length=1, max_length=100)
+    last_name: str = Field(min_length=1, max_length=100)
+    email: EmailStr
+
+
+class SchoolSecretaryStatusUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    is_active: bool
+
+
 class SchoolComparisonRead(BaseModel):
     school_institute_id: UUID
     school_name: str
