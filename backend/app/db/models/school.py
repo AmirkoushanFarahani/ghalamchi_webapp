@@ -25,9 +25,13 @@ GRADE_CHECK = (
 
 class SchoolInstitute(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "school_institutes"
-    __table_args__ = (UniqueConstraint("manager_id", "name", name="uq_school_institute_manager_name"),)
+    __table_args__ = (
+        UniqueConstraint("manager_id", "name", name="uq_school_institute_manager_name"),
+    )
 
-    manager_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), index=True)
+    manager_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
     name: Mapped[str] = mapped_column(String(200))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
@@ -36,27 +40,40 @@ class SchoolCourse(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "school_courses"
     __table_args__ = (
         UniqueConstraint(
-            "workspace_owner_id", "school_institute_id", "name", "grade", name="uq_school_course_workspace_name_grade"
+            "workspace_owner_id",
+            "school_institute_id",
+            "name",
+            "grade",
+            name="uq_school_course_workspace_name_grade",
         ),
         CheckConstraint(GRADE_CHECK, name="valid_school_course_grade"),
         CheckConstraint("price >= 0", name="nonnegative_school_course_price"),
+        CheckConstraint("session_count >= 0", name="nonnegative_school_course_session_count"),
     )
 
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    school_institute_id: Mapped[UUID | None] = mapped_column(ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True)
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(200))
     instructor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     grade: Mapped[str] = mapped_column(String(20), index=True)
     price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    session_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
 class DiscountCode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "school_discount_codes"
     __table_args__ = (
-        UniqueConstraint("workspace_owner_id", "school_institute_id", "code", name="uq_school_discount_workspace_code"),
+        UniqueConstraint(
+            "workspace_owner_id",
+            "school_institute_id",
+            "code",
+            name="uq_school_discount_workspace_code",
+        ),
         CheckConstraint(
             "percentage > 0 AND percentage <= 100", name="valid_school_discount_percentage"
         ),
@@ -66,7 +83,9 @@ class DiscountCode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    school_institute_id: Mapped[UUID | None] = mapped_column(ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True)
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     code: Mapped[str] = mapped_column(String(50))
     percentage: Mapped[Decimal] = mapped_column(Numeric(5, 2))
     expires_on: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -80,7 +99,11 @@ class SchoolRegistrationFees(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     __tablename__ = "school_registration_fees"
     __table_args__ = (
-        UniqueConstraint("workspace_owner_id", "school_institute_id", name="uq_school_registration_fees_workspace"),
+        UniqueConstraint(
+            "workspace_owner_id",
+            "school_institute_id",
+            name="uq_school_registration_fees_workspace",
+        ),
         CheckConstraint("book_price >= 0", name="nonnegative_school_book_price"),
         CheckConstraint("exam_price >= 0", name="nonnegative_school_exam_price"),
     )
@@ -88,7 +111,9 @@ class SchoolRegistrationFees(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    school_institute_id: Mapped[UUID | None] = mapped_column(ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True)
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     book_price: Mapped[Decimal] = mapped_column(
         Numeric(18, 2), default=Decimal("0"), server_default="0"
     )
@@ -103,7 +128,8 @@ class SchoolExamPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "school_exam_plans"
     __table_args__ = (
         UniqueConstraint(
-            "workspace_owner_id", "school_institute_id",
+            "workspace_owner_id",
+            "school_institute_id",
             "grade",
             "academic_track",
             "plan_code",
@@ -128,7 +154,9 @@ class SchoolExamPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    school_institute_id: Mapped[UUID | None] = mapped_column(ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True)
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     grade: Mapped[str] = mapped_column(String(20), index=True)
     academic_track: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     plan_code: Mapped[str] = mapped_column(String(30))
@@ -146,7 +174,10 @@ class SchoolSpecialSupport(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "school_special_supports"
     __table_args__ = (
         UniqueConstraint(
-            "workspace_owner_id", "school_institute_id", "name", name="uq_school_special_support_workspace_name"
+            "workspace_owner_id",
+            "school_institute_id",
+            "name",
+            name="uq_school_special_support_workspace_name",
         ),
         CheckConstraint("monthly_price >= 0", name="nonnegative_school_special_support_monthly"),
         CheckConstraint("seasonal_price >= 0", name="nonnegative_school_special_support_seasonal"),
@@ -155,7 +186,9 @@ class SchoolSpecialSupport(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    school_institute_id: Mapped[UUID | None] = mapped_column(ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True)
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     name: Mapped[str] = mapped_column(String(200))
     monthly_price: Mapped[Decimal] = mapped_column(
         Numeric(18, 2), default=Decimal("0"), server_default="0"
@@ -170,7 +203,10 @@ class Student(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "students"
     __table_args__ = (
         UniqueConstraint(
-            "workspace_owner_id", "school_institute_id", "national_id", name="uq_student_workspace_national_id"
+            "workspace_owner_id",
+            "school_institute_id",
+            "national_id",
+            name="uq_student_workspace_national_id",
         ),
         CheckConstraint(GRADE_CHECK, name="valid_student_grade"),
     )
@@ -178,7 +214,9 @@ class Student(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    school_institute_id: Mapped[UUID | None] = mapped_column(ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True)
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     created_by_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
@@ -223,7 +261,9 @@ class StudentEnrollment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    school_institute_id: Mapped[UUID | None] = mapped_column(ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True)
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     student_id: Mapped[UUID] = mapped_column(
         ForeignKey("students.id", ondelete="RESTRICT"), index=True
     )
@@ -241,6 +281,8 @@ class StudentEnrollment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     book_price: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
     exam_price: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
     exam_plan_code: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # These are immutable pricing/attendance inputs for the registration, not live catalog data.
+    exam_session_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     special_support_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     special_support_period: Mapped[str | None] = mapped_column(String(20), nullable=True)
     special_support_price: Mapped[Decimal] = mapped_column(
@@ -260,6 +302,31 @@ class StudentEnrollment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     payments: Mapped[list["EnrollmentPayment"]] = relationship(
         back_populates="enrollment", cascade="all, delete-orphan", lazy="selectin"
     )
+    class_changes: Mapped[list["EnrollmentClassChange"]] = relationship(
+        back_populates="enrollment",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="EnrollmentClassChange.created_at",
+    )
+    attendance_records: Mapped[list["EnrollmentServiceAttendance"]] = relationship(
+        back_populates="enrollment", cascade="all, delete-orphan", lazy="selectin"
+    )
+    service_cancellations: Mapped[list["EnrollmentServiceCancellation"]] = relationship(
+        back_populates="enrollment",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="EnrollmentServiceCancellation.created_at",
+    )
+    support_changes: Mapped[list["EnrollmentSupportChange"]] = relationship(
+        back_populates="enrollment",
+        cascade="all, delete-orphan",
+        lazy="selectin",
+        order_by="EnrollmentSupportChange.created_at",
+    )
+
+    @property
+    def credit_balance(self) -> Decimal:
+        return max(self.amount_paid - self.total_amount, Decimal("0"))
 
 
 class EnrollmentCourse(UUIDPrimaryKeyMixin, Base):
@@ -271,7 +338,10 @@ class EnrollmentCourse(UUIDPrimaryKeyMixin, Base):
     )
     course_id: Mapped[UUID] = mapped_column(ForeignKey("school_courses.id", ondelete="RESTRICT"))
     course_name: Mapped[str] = mapped_column(String(200))
+    instructor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    session_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    status: Mapped[str] = mapped_column(String(20), default="ACTIVE", server_default="ACTIVE")
     enrollment: Mapped[StudentEnrollment] = relationship(back_populates="courses")
 
 
@@ -284,7 +354,8 @@ class EnrollmentPayment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             name="valid_enrollment_payment_method",
         ),
         CheckConstraint(
-            "status IN ('PENDING','PAID','BOUNCED')", name="valid_enrollment_payment_status"
+            "status IN ('PENDING','PAID','BOUNCED','CANCELLED')",
+            name="valid_enrollment_payment_status",
         ),
         Index("ix_enrollment_payment_due_date", "due_date"),
     )
@@ -292,7 +363,9 @@ class EnrollmentPayment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    school_institute_id: Mapped[UUID | None] = mapped_column(ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True)
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     enrollment_id: Mapped[UUID] = mapped_column(
         ForeignKey("student_enrollments.id", ondelete="CASCADE"), index=True
     )
@@ -308,11 +381,185 @@ class EnrollmentPayment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     enrollment: Mapped[StudentEnrollment] = relationship(back_populates="payments")
 
 
+class EnrollmentClassChange(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Immutable class/price snapshots and a separately confirmed refund request."""
+
+    __tablename__ = "enrollment_class_changes"
+    __table_args__ = (
+        CheckConstraint("refund_amount >= 0", name="nonnegative_class_change_refund"),
+        CheckConstraint(
+            "excess_handling IN ('CREDIT','REFUND')", name="valid_class_change_excess_handling"
+        ),
+        CheckConstraint(
+            "refund_status IN ('NONE','PENDING','PAID','CANCELLED')",
+            name="valid_class_change_refund_status",
+        ),
+        CheckConstraint(
+            "refund_method IS NULL OR refund_method IN ('CASH','BANK_TRANSFER')",
+            name="valid_class_change_refund_method",
+        ),
+    )
+    enrollment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("student_enrollments.id", ondelete="CASCADE"), index=True
+    )
+    changed_by_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    old_course_id: Mapped[UUID] = mapped_column(
+        ForeignKey("school_courses.id", ondelete="RESTRICT")
+    )
+    new_course_id: Mapped[UUID] = mapped_column(
+        ForeignKey("school_courses.id", ondelete="RESTRICT")
+    )
+    old_course_name: Mapped[str] = mapped_column(String(200))
+    new_course_name: Mapped[str] = mapped_column(String(200))
+    old_instructor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    new_instructor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    old_price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    new_price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    old_total: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    new_total: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    reason: Mapped[str] = mapped_column(String(500))
+    excess_handling: Mapped[str] = mapped_column(String(10))
+    refund_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
+    refund_status: Mapped[str] = mapped_column(String(10), default="NONE", server_default="NONE")
+    refund_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    refunded_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    refund_tracking_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    refunded_by_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    enrollment: Mapped[StudentEnrollment] = relationship(back_populates="class_changes")
+
+
+class EnrollmentServiceAttendance(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """One immutable attendance record for a billable class or exam session."""
+
+    __tablename__ = "enrollment_service_attendance"
+    __table_args__ = (
+        UniqueConstraint(
+            "enrollment_id",
+            "service_key",
+            "session_number",
+            name="uq_enrollment_service_attendance_session",
+        ),
+        CheckConstraint("service_type IN ('COURSE','EXAM')", name="valid_attendance_service_type"),
+        CheckConstraint("session_number > 0", name="positive_attendance_session_number"),
+    )
+
+    enrollment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("student_enrollments.id", ondelete="CASCADE"), index=True
+    )
+    course_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_courses.id", ondelete="RESTRICT"), nullable=True
+    )
+    recorded_by_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    service_type: Mapped[str] = mapped_column(String(20))
+    service_key: Mapped[str] = mapped_column(String(80))
+    session_number: Mapped[int] = mapped_column(Integer)
+    attended_on: Mapped[date] = mapped_column(Date)
+    notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    enrollment: Mapped[StudentEnrollment] = relationship(back_populates="attendance_records")
+
+
+class EnrollmentServiceCancellation(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """A service cancellation is an accounting event, never a destructive delete."""
+
+    __tablename__ = "enrollment_service_cancellations"
+    __table_args__ = (
+        UniqueConstraint("enrollment_id", "service_key", name="uq_enrollment_service_cancellation"),
+        CheckConstraint(
+            "service_type IN ('COURSE','EXAM','BOOK','SUPPORT')",
+            name="valid_cancellation_service_type",
+        ),
+        CheckConstraint(
+            "total_sessions >= 0 AND attended_sessions >= 0",
+            name="nonnegative_cancellation_sessions",
+        ),
+        CheckConstraint(
+            "attended_sessions <= total_sessions", name="cancellation_sessions_within_total"
+        ),
+        CheckConstraint(
+            "original_price >= 0 AND attendance_charge >= 0 "
+            "AND cancellation_fee >= 0 AND retained_amount >= 0 "
+            "AND refund_amount >= 0",
+            name="nonnegative_cancellation_amounts",
+        ),
+        CheckConstraint(
+            "refund_status IN ('NONE','PENDING','PAID','CANCELLED')",
+            name="valid_cancellation_refund_status",
+        ),
+        CheckConstraint(
+            "refund_method IS NULL OR refund_method IN ('CASH','BANK_TRANSFER')",
+            name="valid_cancellation_refund_method",
+        ),
+    )
+
+    enrollment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("student_enrollments.id", ondelete="CASCADE"), index=True
+    )
+    requested_by_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    course_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_courses.id", ondelete="RESTRICT"), nullable=True
+    )
+    service_type: Mapped[str] = mapped_column(String(20))
+    service_key: Mapped[str] = mapped_column(String(80))
+    service_name: Mapped[str] = mapped_column(String(200))
+    original_price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    total_sessions: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    attended_sessions: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    attendance_charge: Mapped[Decimal] = mapped_column(
+        Numeric(18, 2), default=0, server_default="0"
+    )
+    cancellation_fee: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
+    retained_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
+    old_total: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    new_total: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    reason: Mapped[str] = mapped_column(String(500))
+    excess_handling: Mapped[str] = mapped_column(String(10))
+    refund_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2), default=0, server_default="0")
+    refund_status: Mapped[str] = mapped_column(String(10), default="NONE", server_default="NONE")
+    refund_method: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    refunded_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    refund_tracking_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    refunded_by_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    enrollment: Mapped[StudentEnrollment] = relationship(back_populates="service_cancellations")
+
+
+class EnrollmentSupportChange(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    """Immutable record of replacing a student's special-support plan."""
+
+    __tablename__ = "enrollment_support_changes"
+    __table_args__ = (
+        CheckConstraint(
+            "old_price >= 0 AND new_price >= 0", name="nonnegative_support_change_prices"
+        ),
+    )
+
+    enrollment_id: Mapped[UUID] = mapped_column(
+        ForeignKey("student_enrollments.id", ondelete="CASCADE"), index=True
+    )
+    changed_by_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    old_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    old_period: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    old_price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    new_name: Mapped[str] = mapped_column(String(200))
+    new_period: Mapped[str] = mapped_column(String(20))
+    new_price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    old_total: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    new_total: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    reason: Mapped[str] = mapped_column(String(500))
+    enrollment: Mapped[StudentEnrollment] = relationship(back_populates="support_changes")
+
+
 class SchoolCost(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "school_costs"
     __table_args__ = (
         UniqueConstraint(
-            "workspace_owner_id", "school_institute_id", "factor_number", name="uq_school_cost_workspace_factor_number"
+            "workspace_owner_id",
+            "school_institute_id",
+            "factor_number",
+            name="uq_school_cost_workspace_factor_number",
         ),
         CheckConstraint("amount > 0", name="positive_school_cost_amount"),
         CheckConstraint(
@@ -324,7 +571,9 @@ class SchoolCost(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )
-    school_institute_id: Mapped[UUID | None] = mapped_column(ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True)
+    school_institute_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     created_by_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
     )

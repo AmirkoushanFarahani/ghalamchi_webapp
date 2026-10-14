@@ -15,6 +15,7 @@ import {
 } from "../components/ui";
 import { useAsync } from "../hooks/useAsync";
 import { api } from "../services/api";
+import { Link } from "../routes/router";
 import { todayIso } from "../utils/date";
 import type {
   Course,
@@ -86,8 +87,8 @@ export function CoursesPage() {
   return (
     <>
       <PageHeader
-        title="دوره‌ها و شهریه‌ها"
-        description={can("school:manage") ? "مدیر مدرسه دوره‌های هر پایه، قیمت و کدهای تخفیف را تعریف می‌کند." : "تعرفه‌ها فقط برای مشاهده هستند. برای ثبت‌نام، طرح مناسب پایه و رشته دانش‌آموز را انتخاب کنید."}
+        title="کلاس‌ها و شهریه‌ها"
+        description={can("school:manage") ? "مدیر مدرسه کلاس‌های هر پایه، دبیر، قیمت و کدهای تخفیف را تعریف می‌کند." : "تعرفه‌ها فقط برای مشاهده هستند. برای ثبت‌نام، طرح مناسب پایه و رشته دانش‌آموز را انتخاب کنید."}
         action={
           can("school:manage") && (
             <div className="button-row">
@@ -113,7 +114,7 @@ export function CoursesPage() {
                 className="button button--primary"
                 onClick={() => setOpen(true)}
               >
-                دوره جدید
+                کلاس جدید
               </button>
             </div>
           )
@@ -128,7 +129,7 @@ export function CoursesPage() {
           <table>
             <thead>
               <tr>
-                <th>دوره</th>
+                <th>کلاس</th>
                 <th>پایه</th>
                 <th>شهریه</th>
                 <th>وضعیت</th>
@@ -165,8 +166,8 @@ export function CoursesPage() {
         </div>
       ) : (
         <EmptyState
-          title="هنوز دوره‌ای تعریف نشده است"
-          detail="مدیر باید ابتدا برای هر پایه دوره و شهریه ثبت کند."
+          title="هنوز کلاسی تعریف نشده است"
+          detail="مدیر باید ابتدا برای هر پایه کلاس و شهریه ثبت کند."
         />
       )}
       <section className="card">
@@ -337,6 +338,7 @@ function CourseForm({
   saved: () => void;
 }) {
   const [price, setPrice] = useState(String(course?.price ?? ""));
+  const [sessionCount, setSessionCount] = useState(String(course?.session_count ?? 0));
   const [grade, setGrade] = useState(course?.grade ?? "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -351,6 +353,7 @@ function CourseForm({
         instructor_name: String(f.get("instructor_name")) || null,
         grade,
         price,
+        session_count: Number(sessionCount),
         ...(course ? { is_active: f.has("is_active") } : {}),
       };
       if (course) await api.patch(`/school/courses/${course.id}`, data);
@@ -358,17 +361,17 @@ function CourseForm({
       saved();
     } catch (reason) {
       setError(
-        reason instanceof Error ? reason.message : "ثبت دوره ناموفق بود.",
+        reason instanceof Error ? reason.message : "ثبت کلاس ناموفق بود.",
       );
     } finally {
       setBusy(false);
     }
   }
   return (
-    <Modal open title={course ? "ویرایش دوره" : "دوره جدید"} onClose={close}>
+    <Modal open title={course ? "ویرایش کلاس" : "کلاس جدید"} onClose={close}>
       <form className="form" onSubmit={submit}>
         {error && <p className="alert alert--error">{error}</p>}
-        <Field label="نام دوره">
+        <Field label="نام کلاس">
           <input name="name" required defaultValue={course?.name} placeholder="مثلاً ریاضی تقویتی" />
         </Field>
         <Field label="نام دبیر (اختیاری)">
@@ -378,11 +381,14 @@ function CourseForm({
         <Field label="شهریه (ریال)">
           <MoneyInput value={price} onValueChange={setPrice} required min="0" />
         </Field>
-        {course && <label className="check"><input name="is_active" type="checkbox" defaultChecked={course.is_active} /> دوره فعال است</label>}
+        <Field label="تعداد جلسات کلاس (برای محاسبه لغو)">
+          <input type="number" min="0" max="500" value={sessionCount} onChange={(event) => setSessionCount(event.target.value)} required />
+        </Field>
+        {course && <label className="check"><input name="is_active" type="checkbox" defaultChecked={course.is_active} /> کلاس فعال است</label>}
         <div className="form-actions">
           <button type="button" className="button button--secondary" onClick={close} disabled={busy}>انصراف</button>
           <button className="button button--primary" disabled={busy}>
-            {busy ? "در حال ذخیره…" : course ? "ذخیره تغییرات" : "ثبت دوره"}
+            {busy ? "در حال ذخیره…" : course ? "ذخیره تغییرات" : "ثبت کلاس"}
           </button>
         </div>
       </form>
@@ -662,7 +668,7 @@ export function StudentsPage() {
     <>
       <PageHeader
         title="دانش‌آموزان"
-        description="پرونده دانش‌آموز، دوره‌های انتخاب‌شده، شهریه و وضعیت پرداخت در یک محل ثبت می‌شود."
+        description="پرونده دانش‌آموز، کلاس‌های انتخاب‌شده، شهریه و وضعیت پرداخت در یک محل ثبت می‌شود."
         action={
           can("school:enroll") && (
             <button
@@ -686,7 +692,7 @@ export function StudentsPage() {
                 <th>دانش‌آموز</th>
                 <th>پایه</th>
                 <th>ولی</th>
-                <th>دوره‌ها</th>
+                <th>کلاس‌ها</th>
                 <th>مانده</th>
                 <th>وضعیت</th>
                 <th>پرداخت‌ها</th>
@@ -700,6 +706,7 @@ export function StudentsPage() {
                     <td>
                       <strong>{student.full_name}</strong>
                       <small dir="ltr">{student.national_id}</small>
+                      <Link to={`/students/${student.id}`}>پرونده و تغییر کلاس</Link>
                     </td>
                     <td>{gradeName(student.grade)}</td>
                     <td>
@@ -1230,7 +1237,7 @@ function StudentRegistrationForm({
             </div>
           ) : (
             <p className="alert alert--warning">
-              برای این پایه هنوز دوره فعالی تعریف نشده است.
+              برای این پایه هنوز کلاس فعالی تعریف نشده است.
             </p>
           )}
           <Field label="کد تخفیف (اختیاری)">
@@ -1546,7 +1553,7 @@ function EnrollmentForm({
           <input name="discount_code" dir="ltr" placeholder="کد را وارد کنید" />
         </Field>
         <section className="card">
-          <h2 className="card-title">انتخاب دوره‌ها</h2>
+          <h2 className="card-title">انتخاب کلاس‌ها</h2>
           {!grade ? (
             <p>ابتدا پایه تحصیلی را انتخاب کنید.</p>
           ) : courses.loading ? (
@@ -1567,7 +1574,7 @@ function EnrollmentForm({
             </div>
           ) : (
             <p className="alert alert--warning">
-              برای این پایه هنوز دوره فعالی تعریف نشده است.
+              برای این پایه هنوز کلاس فعالی تعریف نشده است.
             </p>
           )}
           <p className="allocation-total">

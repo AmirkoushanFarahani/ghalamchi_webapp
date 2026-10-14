@@ -6,10 +6,16 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from backend.app.core.passwords import hash_password
 from backend.app.db.models import (
     DiscountCode,
+    EnrollmentClassChange,
     EnrollmentCourse,
     EnrollmentPayment,
+    EnrollmentServiceAttendance,
+    EnrollmentServiceCancellation,
+    EnrollmentSupportChange,
+    Role,
     SchoolCost,
     SchoolCourse,
     SchoolExamPlan,
@@ -19,17 +25,18 @@ from backend.app.db.models import (
     Student,
     StudentEnrollment,
     User,
-    Role,
 )
-from backend.app.core.passwords import hash_password
 from backend.app.repositories.audit import AuditRepository
 from backend.app.schemas.school import (
+    AttendanceCreate,
+    ClassChangeCreate,
     CourseCreate,
     CourseUpdate,
     DiscountCodeCreate,
-    ExamPlanUpdate,
     EnrollmentPaymentCreate,
+    ExamPlanUpdate,
     PaymentStatusUpdate,
+    RefundAction,
     RegistrationFeesUpdate,
     SchoolCostCreate,
     SchoolInstituteCreate,
@@ -37,8 +44,10 @@ from backend.app.schemas.school import (
     SchoolSecretaryCreate,
     SchoolSecretaryPasswordReset,
     SchoolSecretaryUpdate,
+    ServiceCancellationCreate,
     SpecialSupportUpdate,
     StudentEnrollmentCreate,
+    SupportChangeCreate,
 )
 from backend.app.services.school_exam_catalog import DEFAULT_EXAM_CATALOG, PLAN_CODES, decimal
 
@@ -76,10 +85,12 @@ class SchoolService:
             if school is not None:
                 return school.id
         school = self.session.scalar(
-            select(SchoolInstitute).where(
+            select(SchoolInstitute)
+            .where(
                 SchoolInstitute.manager_id == self.workspace_owner_id,
                 SchoolInstitute.is_active.is_(True),
-            ).order_by(SchoolInstitute.created_at)
+            )
+            .order_by(SchoolInstitute.created_at)
         )
         if school is None:
             school = SchoolInstitute(manager_id=self.workspace_owner_id, name="آموزشگاه اول")
@@ -100,10 +111,13 @@ class SchoolService:
         if self.actor.school_manager_id is not None:
             school = self.session.get(SchoolInstitute, self.school_institute_id)
             return [school] if school is not None else []
-        return list(self.session.scalars(
-            select(SchoolInstitute).where(SchoolInstitute.manager_id == self.workspace_owner_id)
-            .order_by(SchoolInstitute.created_at)
-        ))
+        return list(
+            self.session.scalars(
+                select(SchoolInstitute)
+                .where(SchoolInstitute.manager_id == self.workspace_owner_id)
+                .order_by(SchoolInstitute.created_at)
+            )
+        )
 
     def create_institute(self, data: SchoolInstituteCreate) -> SchoolInstitute:
         self._require_manager()
@@ -123,10 +137,12 @@ class SchoolService:
 
     def rename_institute(self, school_id: UUID, data: SchoolInstituteCreate) -> SchoolInstitute:
         self._require_manager()
-        school = self.session.scalar(select(SchoolInstitute).where(
-            SchoolInstitute.id == school_id,
-            SchoolInstitute.manager_id == self.workspace_owner_id,
-        ))
+        school = self.session.scalar(
+            select(SchoolInstitute).where(
+                SchoolInstitute.id == school_id,
+                SchoolInstitute.manager_id == self.workspace_owner_id,
+            )
+        )
         if school is None:
             raise SchoolError("School or institute was not found")
         school.name = data.name
@@ -139,11 +155,13 @@ class SchoolService:
 
     def select_institute(self, school_id: UUID) -> SchoolInstitute:
         self._require_manager()
-        school = self.session.scalar(select(SchoolInstitute).where(
-            SchoolInstitute.id == school_id,
-            SchoolInstitute.manager_id == self.workspace_owner_id,
-            SchoolInstitute.is_active.is_(True),
-        ))
+        school = self.session.scalar(
+            select(SchoolInstitute).where(
+                SchoolInstitute.id == school_id,
+                SchoolInstitute.manager_id == self.workspace_owner_id,
+                SchoolInstitute.is_active.is_(True),
+            )
+        )
         if school is None:
             raise SchoolError("School or institute was not found")
         self.actor.active_school_institute_id = school.id
@@ -153,12 +171,19 @@ class SchoolService:
 
     def assign_secretary(self, school_id: UUID, data: SchoolSecretaryAssign) -> SchoolInstitute:
         self._require_manager()
-        school = self.session.scalar(select(SchoolInstitute).where(
-            SchoolInstitute.id == school_id, SchoolInstitute.manager_id == self.workspace_owner_id
-        ))
-        secretary = self.session.scalar(select(User).where(
-            User.id == data.secretary_id, User.school_manager_id == self.workspace_owner_id, User.is_active.is_(True)
-        ))
+        school = self.session.scalar(
+            select(SchoolInstitute).where(
+                SchoolInstitute.id == school_id,
+                SchoolInstitute.manager_id == self.workspace_owner_id,
+            )
+        )
+        secretary = self.session.scalar(
+            select(User).where(
+                User.id == data.secretary_id,
+                User.school_manager_id == self.workspace_owner_id,
+                User.is_active.is_(True),
+            )
+        )
         if school is None or secretary is None:
             raise SchoolError("School or secretary was not found in this manager workspace")
         secretary.school_institute_id = school.id
@@ -167,18 +192,25 @@ class SchoolService:
 
     def create_secretary(self, school_id: UUID, data: SchoolSecretaryCreate) -> User:
         self._require_manager()
-        school = self.session.scalar(select(SchoolInstitute).where(
-            SchoolInstitute.id == school_id, SchoolInstitute.manager_id == self.workspace_owner_id
-        ))
+        school = self.session.scalar(
+            select(SchoolInstitute).where(
+                SchoolInstitute.id == school_id,
+                SchoolInstitute.manager_id == self.workspace_owner_id,
+            )
+        )
         employee_role = self.session.scalar(select(Role).where(Role.name == "EMPLOYEE"))
         if school is None:
             raise SchoolError("School or institute was not found")
         if employee_role is None:
             raise SchoolError("Employee role has not been initialized")
         secretary = User(
-            email=str(data.email).casefold(), password_hash=hash_password(data.password),
-            first_name=data.first_name, last_name=data.last_name, business_category="EDUCATION",
-            school_manager_id=self.workspace_owner_id, school_institute_id=school.id,
+            email=str(data.email).casefold(),
+            password_hash=hash_password(data.password),
+            first_name=data.first_name,
+            last_name=data.last_name,
+            business_category="EDUCATION",
+            school_manager_id=self.workspace_owner_id,
+            school_institute_id=school.id,
             roles=[employee_role],
         )
         self.session.add(secretary)
@@ -191,37 +223,63 @@ class SchoolService:
 
     def list_secretaries(self, school_id: UUID) -> list[User]:
         self._require_manager()
-        if self.session.scalar(select(SchoolInstitute.id).where(
-            SchoolInstitute.id == school_id, SchoolInstitute.manager_id == self.workspace_owner_id
-        )) is None:
+        if (
+            self.session.scalar(
+                select(SchoolInstitute.id).where(
+                    SchoolInstitute.id == school_id,
+                    SchoolInstitute.manager_id == self.workspace_owner_id,
+                )
+            )
+            is None
+        ):
             raise SchoolError("School or institute was not found")
-        return list(self.session.scalars(select(User).where(
-            User.school_manager_id == self.workspace_owner_id,
-            User.school_institute_id == school_id,
-            User.roles.any(Role.name == "EMPLOYEE"),
-        ).order_by(User.created_at, User.id)))
+        return list(
+            self.session.scalars(
+                select(User)
+                .where(
+                    User.school_manager_id == self.workspace_owner_id,
+                    User.school_institute_id == school_id,
+                    User.roles.any(Role.name == "EMPLOYEE"),
+                )
+                .order_by(User.created_at, User.id)
+            )
+        )
 
     def _managed_secretary(self, school_id: UUID, secretary_id: UUID) -> User:
         self._require_manager()
-        school = self.session.scalar(select(SchoolInstitute.id).where(
-            SchoolInstitute.id == school_id, SchoolInstitute.manager_id == self.workspace_owner_id
-        ))
-        secretary = self.session.scalar(select(User).where(
-            User.id == secretary_id, User.school_manager_id == self.workspace_owner_id,
-            User.school_institute_id == school_id, User.roles.any(Role.name == "EMPLOYEE"),
-        ).with_for_update())
+        school = self.session.scalar(
+            select(SchoolInstitute.id).where(
+                SchoolInstitute.id == school_id,
+                SchoolInstitute.manager_id == self.workspace_owner_id,
+            )
+        )
+        secretary = self.session.scalar(
+            select(User)
+            .where(
+                User.id == secretary_id,
+                User.school_manager_id == self.workspace_owner_id,
+                User.school_institute_id == school_id,
+                User.roles.any(Role.name == "EMPLOYEE"),
+            )
+            .with_for_update()
+        )
         if school is None or secretary is None:
             raise SchoolError("School or secretary was not found in this manager workspace")
         return secretary
 
-    def update_secretary(self, school_id: UUID, secretary_id: UUID, data: SchoolSecretaryUpdate) -> User:
+    def update_secretary(
+        self, school_id: UUID, secretary_id: UUID, data: SchoolSecretaryUpdate
+    ) -> User:
         secretary = self._managed_secretary(school_id, secretary_id)
         secretary.first_name = data.first_name
         secretary.last_name = data.last_name
         secretary.email = str(data.email).casefold()
         AuditRepository(self.session).record(
-            action="school.secretary.updated", resource_type="user",
-            resource_id=str(secretary.id), actor_id=self.actor.id, success=True,
+            action="school.secretary.updated",
+            resource_type="user",
+            resource_id=str(secretary.id),
+            actor_id=self.actor.id,
+            success=True,
             details={"school_institute_id": str(school_id)},
         )
         try:
@@ -235,8 +293,11 @@ class SchoolService:
         secretary = self._managed_secretary(school_id, secretary_id)
         secretary.is_active = is_active
         AuditRepository(self.session).record(
-            action="school.secretary.status_changed", resource_type="user",
-            resource_id=str(secretary.id), actor_id=self.actor.id, success=True,
+            action="school.secretary.status_changed",
+            resource_type="user",
+            resource_id=str(secretary.id),
+            actor_id=self.actor.id,
+            success=True,
             details={"school_institute_id": str(school_id), "is_active": is_active},
         )
         self.session.commit()
@@ -248,8 +309,11 @@ class SchoolService:
         secretary = self._managed_secretary(school_id, secretary_id)
         secretary.password_hash = hash_password(data.password)
         AuditRepository(self.session).record(
-            action="school.secretary.credentials_reset", resource_type="user",
-            resource_id=str(secretary.id), actor_id=self.actor.id, success=True,
+            action="school.secretary.credentials_reset",
+            resource_type="user",
+            resource_id=str(secretary.id),
+            actor_id=self.actor.id,
+            success=True,
             details={"school_institute_id": str(school_id)},
         )
         self.session.commit()
@@ -259,30 +323,61 @@ class SchoolService:
         today = date.today()
         result: list[dict[str, object]] = []
         for school in self.list_institutes():
-            enrollments = list(self.session.scalars(select(StudentEnrollment).where(
-                StudentEnrollment.workspace_owner_id == self.workspace_owner_id,
-                StudentEnrollment.school_institute_id == school.id,
-            )))
-            payments = list(self.session.scalars(select(EnrollmentPayment).where(
-                EnrollmentPayment.workspace_owner_id == self.workspace_owner_id,
-                EnrollmentPayment.school_institute_id == school.id,
-            )))
-            costs = list(self.session.scalars(select(SchoolCost).where(
-                SchoolCost.workspace_owner_id == self.workspace_owner_id,
-                SchoolCost.school_institute_id == school.id,
-            )))
+            enrollments = list(
+                self.session.scalars(
+                    select(StudentEnrollment).where(
+                        StudentEnrollment.workspace_owner_id == self.workspace_owner_id,
+                        StudentEnrollment.school_institute_id == school.id,
+                    )
+                )
+            )
+            payments = list(
+                self.session.scalars(
+                    select(EnrollmentPayment).where(
+                        EnrollmentPayment.workspace_owner_id == self.workspace_owner_id,
+                        EnrollmentPayment.school_institute_id == school.id,
+                    )
+                )
+            )
+            costs = list(
+                self.session.scalars(
+                    select(SchoolCost).where(
+                        SchoolCost.workspace_owner_id == self.workspace_owner_id,
+                        SchoolCost.school_institute_id == school.id,
+                    )
+                )
+            )
             registered = sum((row.total_amount for row in enrollments), Decimal("0"))
-            received = sum((row.amount for row in payments if row.status == "PAID"), Decimal("0"))
+            received = sum((row.amount_paid for row in enrollments), Decimal("0"))
             outstanding = sum((row.balance_due for row in enrollments), Decimal("0"))
-            due = sum((row.amount for row in payments if row.status == "PENDING" and row.due_date is not None and row.due_date <= today), Decimal("0"))
-            result.append({
-                "school_institute_id": school.id, "school_name": school.name,
-                "student_count": sum(1 for _ in self.session.scalars(select(Student.id).where(Student.school_institute_id == school.id))),
-                "registered_tuition": registered, "received_tuition": received,
-                "outstanding_tuition": outstanding, "due_payments": due,
-                "costs": sum((row.amount for row in costs), Decimal("0")),
-                "net_cash": received - sum((row.amount for row in costs), Decimal("0")),
-            })
+            due = sum(
+                (
+                    row.amount
+                    for row in payments
+                    if row.status == "PENDING"
+                    and row.due_date is not None
+                    and row.due_date <= today
+                ),
+                Decimal("0"),
+            )
+            result.append(
+                {
+                    "school_institute_id": school.id,
+                    "school_name": school.name,
+                    "student_count": sum(
+                        1
+                        for _ in self.session.scalars(
+                            select(Student.id).where(Student.school_institute_id == school.id)
+                        )
+                    ),
+                    "registered_tuition": registered,
+                    "received_tuition": received,
+                    "outstanding_tuition": outstanding,
+                    "due_payments": due,
+                    "costs": sum((row.amount for row in costs), Decimal("0")),
+                    "net_cash": received - sum((row.amount for row in costs), Decimal("0")),
+                }
+            )
         return result
 
     def list_courses(self, grade: str | None = None) -> list[SchoolCourse]:
@@ -295,7 +390,11 @@ class SchoolService:
         return list(self.session.scalars(query.order_by(SchoolCourse.grade, SchoolCourse.name)))
 
     def create_course(self, data: CourseCreate) -> SchoolCourse:
-        course = SchoolCourse(workspace_owner_id=self.workspace_owner_id, school_institute_id=self.school_institute_id, **data.model_dump())
+        course = SchoolCourse(
+            workspace_owner_id=self.workspace_owner_id,
+            school_institute_id=self.school_institute_id,
+            **data.model_dump(),
+        )
         self.session.add(course)
         try:
             self.session.commit()
@@ -332,13 +431,20 @@ class SchoolService:
         return list(
             self.session.scalars(
                 select(DiscountCode)
-                .where(DiscountCode.workspace_owner_id == self.workspace_owner_id, DiscountCode.school_institute_id == self.school_institute_id)
+                .where(
+                    DiscountCode.workspace_owner_id == self.workspace_owner_id,
+                    DiscountCode.school_institute_id == self.school_institute_id,
+                )
                 .order_by(DiscountCode.code)
             )
         )
 
     def create_discount(self, data: DiscountCodeCreate) -> DiscountCode:
-        code = DiscountCode(workspace_owner_id=self.workspace_owner_id, school_institute_id=self.school_institute_id, **data.model_dump())
+        code = DiscountCode(
+            workspace_owner_id=self.workspace_owner_id,
+            school_institute_id=self.school_institute_id,
+            **data.model_dump(),
+        )
         self.session.add(code)
         try:
             self.session.commit()
@@ -366,7 +472,10 @@ class SchoolService:
             )
         )
         if fees is None:
-            fees = SchoolRegistrationFees(workspace_owner_id=self.workspace_owner_id, school_institute_id=self.school_institute_id)
+            fees = SchoolRegistrationFees(
+                workspace_owner_id=self.workspace_owner_id,
+                school_institute_id=self.school_institute_id,
+            )
             self.session.add(fees)
         fees.book_price = data.book_price
         fees.exam_price = data.exam_price
@@ -414,7 +523,11 @@ class SchoolService:
         return plan
 
     def create_exam_plan(self, data: ExamPlanUpdate) -> SchoolExamPlan:
-        plan = SchoolExamPlan(workspace_owner_id=self.workspace_owner_id, school_institute_id=self.school_institute_id, **data.model_dump())
+        plan = SchoolExamPlan(
+            workspace_owner_id=self.workspace_owner_id,
+            school_institute_id=self.school_institute_id,
+            **data.model_dump(),
+        )
         self.session.add(plan)
         try:
             self.session.commit()
@@ -429,12 +542,17 @@ class SchoolService:
         return list(
             self.session.scalars(
                 select(SchoolSpecialSupport)
-                .where(SchoolSpecialSupport.workspace_owner_id == self.workspace_owner_id, SchoolSpecialSupport.school_institute_id == self.school_institute_id)
+                .where(
+                    SchoolSpecialSupport.workspace_owner_id == self.workspace_owner_id,
+                    SchoolSpecialSupport.school_institute_id == self.school_institute_id,
+                )
                 .order_by(SchoolSpecialSupport.name)
             )
         )
 
-    def create_special_support(self, name: str, monthly_price: Decimal, seasonal_price: Decimal) -> SchoolSpecialSupport:
+    def create_special_support(
+        self, name: str, monthly_price: Decimal, seasonal_price: Decimal
+    ) -> SchoolSpecialSupport:
         support = SchoolSpecialSupport(
             workspace_owner_id=self.workspace_owner_id,
             school_institute_id=self.school_institute_id,
@@ -450,7 +568,9 @@ class SchoolService:
             raise SchoolConflictError("A special support with this name already exists") from exc
         return support
 
-    def update_special_support(self, support_id: UUID, data: SpecialSupportUpdate) -> SchoolSpecialSupport:
+    def update_special_support(
+        self, support_id: UUID, data: SpecialSupportUpdate
+    ) -> SchoolSpecialSupport:
         support = self.session.scalar(
             select(SchoolSpecialSupport).where(
                 SchoolSpecialSupport.id == support_id,
@@ -473,7 +593,10 @@ class SchoolService:
         students = list(
             self.session.scalars(
                 select(Student)
-                .where(Student.workspace_owner_id == self.workspace_owner_id, Student.school_institute_id == self.school_institute_id)
+                .where(
+                    Student.workspace_owner_id == self.workspace_owner_id,
+                    Student.school_institute_id == self.school_institute_id,
+                )
                 .order_by(Student.full_name)
             )
         )
@@ -484,7 +607,10 @@ class SchoolService:
     def list_costs(
         self, start_date: date | None = None, end_date: date | None = None
     ) -> list[SchoolCost]:
-        query = select(SchoolCost).where(SchoolCost.workspace_owner_id == self.workspace_owner_id, SchoolCost.school_institute_id == self.school_institute_id)
+        query = select(SchoolCost).where(
+            SchoolCost.workspace_owner_id == self.workspace_owner_id,
+            SchoolCost.school_institute_id == self.school_institute_id,
+        )
         if start_date is not None:
             query = query.where(SchoolCost.cost_date >= start_date)
         if end_date is not None:
@@ -502,7 +628,9 @@ class SchoolService:
             workspace_owner_id=self.workspace_owner_id,
             school_institute_id=self.school_institute_id,
             created_by_id=self.actor.id,
-            factor_number=(supplied_number or f"COST-{date.today():%Y%m%d}-{uuid4().hex[:8].upper()}"),
+            factor_number=(
+                supplied_number or f"COST-{date.today():%Y%m%d}-{uuid4().hex[:8].upper()}"
+            ),
             **values,
         )
         self.session.add(cost)
@@ -516,7 +644,8 @@ class SchoolService:
     def get_student(self, student_id: UUID) -> Student:
         student = self.session.scalar(
             select(Student).where(
-                Student.id == student_id, Student.workspace_owner_id == self.workspace_owner_id,
+                Student.id == student_id,
+                Student.workspace_owner_id == self.workspace_owner_id,
                 Student.school_institute_id == self.school_institute_id,
             )
         )
@@ -610,6 +739,7 @@ class SchoolService:
             book_price=book_price,
             exam_price=exam_price,
             exam_plan_code=exam_plan.plan_code if exam_plan else None,
+            exam_session_count=exam_plan.exam_count if exam_plan and data.exam_registered else 0,
             special_support_name=special_support_name,
             special_support_period=special_support_period,
             special_support_price=special_support_price,
@@ -631,7 +761,9 @@ class SchoolService:
                     enrollment_id=enrollment.id,
                     course_id=course.id,
                     course_name=course.name,
+                    instructor_name=course.instructor_name,
                     price=course.price,
+                    session_count=course.session_count,
                 )
                 for course in courses
             ]
@@ -666,7 +798,10 @@ class SchoolService:
     def _ensure_default_exam_plans(self) -> None:
         exists = self.session.scalar(
             select(SchoolExamPlan.id)
-            .where(SchoolExamPlan.workspace_owner_id == self.workspace_owner_id, SchoolExamPlan.school_institute_id == self.school_institute_id)
+            .where(
+                SchoolExamPlan.workspace_owner_id == self.workspace_owner_id,
+                SchoolExamPlan.school_institute_id == self.school_institute_id,
+            )
             .limit(1)
         )
         if exists is not None:
@@ -738,6 +873,526 @@ class SchoolService:
         )
         return support, support.name, data.special_support.period, price
 
+    def _locked_enrollment(self, student_id: UUID, enrollment_id: UUID) -> StudentEnrollment:
+        enrollment = self.session.scalar(
+            select(StudentEnrollment)
+            .where(
+                StudentEnrollment.id == enrollment_id,
+                StudentEnrollment.student_id == student_id,
+                StudentEnrollment.workspace_owner_id == self.workspace_owner_id,
+                StudentEnrollment.school_institute_id == self.school_institute_id,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if enrollment is None:
+            raise SchoolError("پرونده ثبت‌نام در این آموزشگاه پیدا نشد.")
+        return enrollment
+
+    def _refresh_balance(self, enrollment: StudentEnrollment) -> None:
+        paid = sum(
+            (row.amount for row in enrollment.payments if row.status == "PAID"), Decimal("0")
+        )
+        refunded = sum(
+            (row.refund_amount for row in enrollment.class_changes if row.refund_status == "PAID"),
+            Decimal("0"),
+        )
+        refunded += sum(
+            (
+                row.refund_amount
+                for row in enrollment.service_cancellations
+                if row.refund_status == "PAID"
+            ),
+            Decimal("0"),
+        )
+        enrollment.amount_paid = paid - refunded
+        enrollment.balance_due = max(enrollment.total_amount - enrollment.amount_paid, Decimal("0"))
+        enrollment.status = self._status(
+            enrollment.total_amount, enrollment.amount_paid, enrollment.payments
+        )
+
+    def _append_payment(self, enrollment: StudentEnrollment, data: EnrollmentPaymentCreate) -> None:
+        if data.amount > enrollment.balance_due:
+            raise SchoolError("مبلغ پرداخت نمی‌تواند بیشتر از مانده شهریه باشد.")
+        pending = sum(
+            (p.amount for p in enrollment.payments if p.status == "PENDING"), Decimal("0")
+        )
+        if pending + data.amount > enrollment.balance_due:
+            raise SchoolError(
+                "برای این مانده قبلاً چک یا قسط ثبت شده است؛ ابتدا پرداخت جایگزین‌شده را لغو کنید."
+            )
+        enrollment.payments.append(
+            EnrollmentPayment(
+                workspace_owner_id=self.workspace_owner_id,
+                school_institute_id=self.school_institute_id,
+                recorded_by_id=self.actor.id,
+                **data.model_dump(),
+                status="PAID" if data.method in {"CASH", "BANK_TRANSFER"} else "PENDING",
+            )
+        )
+        self._refresh_balance(enrollment)
+
+    def change_class(
+        self,
+        student_id: UUID,
+        enrollment_id: UUID,
+        course_id: UUID,
+        data: ClassChangeCreate,
+    ) -> Student:
+        enrollment = self._locked_enrollment(student_id, enrollment_id)
+        if any(change.refund_status == "PENDING" for change in enrollment.class_changes) or any(
+            cancellation.refund_status == "PENDING"
+            for cancellation in enrollment.service_cancellations
+        ):
+            raise SchoolConflictError("ابتدا مدیر باید درخواست بازپرداخت قبلی را تعیین تکلیف کند.")
+        old = next(
+            (
+                row
+                for row in enrollment.courses
+                if row.course_id == course_id and row.status == "ACTIVE"
+            ),
+            None,
+        )
+        target = self.session.scalar(
+            select(SchoolCourse)
+            .where(
+                SchoolCourse.id == data.new_course_id,
+                SchoolCourse.workspace_owner_id == self.workspace_owner_id,
+                SchoolCourse.school_institute_id == self.school_institute_id,
+                SchoolCourse.is_active.is_(True),
+            )
+            .with_for_update()
+        )
+        if old is None or target is None:
+            raise SchoolError("کلاس ثبت‌شده یا کلاس جایگزین در این آموزشگاه در دسترس نیست.")
+        if target.grade != enrollment.student.grade:
+            raise SchoolError("کلاس جایگزین باید مربوط به همان پایه دانش‌آموز باشد.")
+        if any(row.course_id == target.id and row.status == "ACTIVE" for row in enrollment.courses):
+            raise SchoolConflictError("این کلاس قبلاً در همین پرونده ثبت شده است.")
+        if (
+            old.price != data.expected_old_price
+            or target.price != data.expected_new_price
+            or enrollment.total_amount != data.expected_total
+        ):
+            raise SchoolConflictError(
+                "قیمت یا پرونده تغییر کرده است؛ صفحه را تازه‌سازی و دوباره بررسی کنید."
+            )
+        subtotal = enrollment.subtotal - old.price + target.price
+        # Preserve the negotiated discount amount; never re-read an edited/expired code.
+        discount = min(enrollment.discount_amount, subtotal)
+        new_total = subtotal - discount
+        additional_due = max(
+            new_total - max(enrollment.total_amount, enrollment.amount_paid), Decimal("0")
+        )
+        if data.payment is not None and data.payment.amount != additional_due:
+            raise SchoolError("پرداخت تغییر کلاس باید دقیقاً برابر مابه‌التفاوت قابل پرداخت باشد.")
+        change = EnrollmentClassChange(
+            enrollment_id=enrollment.id,
+            changed_by_id=self.actor.id,
+            old_course_id=old.course_id,
+            new_course_id=target.id,
+            old_course_name=old.course_name,
+            new_course_name=target.name,
+            old_instructor_name=old.instructor_name,
+            new_instructor_name=target.instructor_name,
+            old_price=old.price,
+            new_price=target.price,
+            old_total=enrollment.total_amount,
+            new_total=new_total,
+            reason=data.reason,
+            excess_handling=data.excess_handling,
+            refund_amount=Decimal("0"),
+            refund_status="NONE",
+        )
+        old.course_id, old.course_name, old.instructor_name, old.price = (
+            target.id,
+            target.name,
+            target.instructor_name,
+            target.price,
+        )
+        old.session_count = target.session_count
+        enrollment.subtotal, enrollment.discount_amount, enrollment.total_amount = (
+            subtotal,
+            discount,
+            new_total,
+        )
+        enrollment.class_changes.append(change)
+        self._refresh_balance(enrollment)
+        if data.payment is not None:
+            self._append_payment(enrollment, data.payment)
+        if data.excess_handling == "REFUND" and enrollment.credit_balance > 0:
+            change.refund_amount = enrollment.credit_balance
+            change.refund_status = "PENDING"
+        AuditRepository(self.session).record(
+            action="school.class.changed",
+            resource_type="student_enrollment",
+            resource_id=str(enrollment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={
+                "old_class": str(course_id),
+                "new_class": str(target.id),
+                "old_total": str(change.old_total),
+                "new_total": str(new_total),
+            },
+        )
+        self.session.commit()
+        return self.get_student(student_id)
+
+    def record_attendance(
+        self, student_id: UUID, enrollment_id: UUID, data: AttendanceCreate
+    ) -> Student:
+        enrollment = self._locked_enrollment(student_id, enrollment_id)
+        if data.service_type == "COURSE":
+            assert data.course_id is not None
+            course = next(
+                (
+                    row
+                    for row in enrollment.courses
+                    if row.course_id == data.course_id and row.status == "ACTIVE"
+                ),
+                None,
+            )
+            if course is None:
+                raise SchoolError("کلاس فعال این دانش‌آموز پیدا نشد.")
+            total_sessions, service_key = course.session_count, f"course:{course.course_id}"
+        else:
+            if not enrollment.exam_price or enrollment.exam_session_count <= 0:
+                raise SchoolError("برای این پرونده آزمونِ دارای تعداد جلسه ثبت نشده است.")
+            total_sessions, service_key = enrollment.exam_session_count, "exam"
+        if data.session_number > total_sessions:
+            raise SchoolError("شماره جلسه از تعداد جلسات ثبت‌شده بیشتر است.")
+        duplicate = self.session.scalar(
+            select(EnrollmentServiceAttendance.id).where(
+                EnrollmentServiceAttendance.enrollment_id == enrollment.id,
+                EnrollmentServiceAttendance.service_key == service_key,
+                EnrollmentServiceAttendance.session_number == data.session_number,
+            )
+        )
+        if duplicate is not None:
+            raise SchoolConflictError("حضور این جلسه قبلاً ثبت شده است.")
+        enrollment.attendance_records.append(
+            EnrollmentServiceAttendance(
+                course_id=data.course_id,
+                recorded_by_id=self.actor.id,
+                service_type=data.service_type,
+                service_key=service_key,
+                session_number=data.session_number,
+                attended_on=data.attended_on,
+                notes=data.notes,
+            )
+        )
+        AuditRepository(self.session).record(
+            action="school.attendance.recorded",
+            resource_type="student_enrollment",
+            resource_id=str(enrollment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={"service": service_key, "session_number": data.session_number},
+        )
+        self.session.commit()
+        return self.get_student(student_id)
+
+    def cancel_service(
+        self, student_id: UUID, enrollment_id: UUID, data: ServiceCancellationCreate
+    ) -> Student:
+        """Cancel one service while retaining an immutable financial/audit record."""
+        enrollment = self._locked_enrollment(student_id, enrollment_id)
+        if any(change.refund_status == "PENDING" for change in enrollment.class_changes) or any(
+            row.refund_status == "PENDING" for row in enrollment.service_cancellations
+        ):
+            raise SchoolConflictError("ابتدا مدیر باید درخواست بازپرداخت قبلی را تعیین تکلیف کند.")
+        service_key: str
+        service_name: str
+        original_price: Decimal
+        total_sessions = 0
+        if data.service_type == "COURSE":
+            assert data.course_id is not None
+            course = next(
+                (
+                    row
+                    for row in enrollment.courses
+                    if row.course_id == data.course_id and row.status == "ACTIVE"
+                ),
+                None,
+            )
+            if course is None:
+                raise SchoolError("کلاس فعال برای لغو پیدا نشد.")
+            if course.session_count <= 0:
+                raise SchoolError("مدیر باید ابتدا تعداد جلسات این کلاس را در بخش کلاس‌ها ثبت کند.")
+            service_key, service_name, original_price = (
+                f"course:{course.course_id}",
+                course.course_name,
+                course.price,
+            )
+            total_sessions = course.session_count
+        elif data.service_type == "EXAM":
+            if enrollment.exam_price <= 0 or enrollment.exam_session_count <= 0:
+                raise SchoolError("طرح آزمون فعال با تعداد آزمون مشخص برای لغو وجود ندارد.")
+            service_key = "exam"
+            service_name = f"طرح آزمون {enrollment.exam_plan_code or ''}".strip()
+            original_price, total_sessions = enrollment.exam_price, enrollment.exam_session_count
+        elif data.service_type == "BOOK":
+            if enrollment.book_price <= 0:
+                raise SchoolError("بن کتاب فعالی برای لغو وجود ندارد.")
+            service_key, service_name, original_price = "book", "بن کتاب", enrollment.book_price
+        else:
+            if enrollment.special_support_price <= 0:
+                raise SchoolError("پشتیبان ویژه فعالی برای لغو وجود ندارد.")
+            service_key = "support"
+            service_name = enrollment.special_support_name or "پشتیبان ویژه"
+            original_price = enrollment.special_support_price
+        if (
+            original_price != data.expected_original_price
+            or enrollment.total_amount != data.expected_total
+        ):
+            raise SchoolConflictError("مبلغ خدمت یا فاکتور تغییر کرده است؛ صفحه را تازه‌سازی کنید.")
+        if any(row.service_key == service_key for row in enrollment.service_cancellations):
+            raise SchoolConflictError("این خدمت قبلاً لغو شده است.")
+        if data.service_type in {"BOOK", "SUPPORT"} and data.attended_sessions != 0:
+            raise SchoolError("برای بن کتاب یا پشتیبان ویژه، تعداد جلسه باید صفر باشد.")
+        attended = data.attended_sessions
+        if attended > total_sessions:
+            raise SchoolError("تعداد جلسات شرکت‌کرده نمی‌تواند از کل جلسات بیشتر باشد.")
+        attendance_charge = (
+            (original_price * Decimal(attended) / Decimal(total_sessions)).quantize(
+                Decimal("0.01"), ROUND_HALF_UP
+            )
+            if total_sessions
+            else Decimal("0")
+        )
+        cancellation_fee = (original_price * Decimal("0.10")).quantize(
+            Decimal("0.01"), ROUND_HALF_UP
+        )
+        retained = min(original_price, attendance_charge + cancellation_fee)
+        old_total, prior_credit = enrollment.total_amount, enrollment.credit_balance
+        subtotal = enrollment.subtotal - original_price + retained
+        discount = min(enrollment.discount_amount, subtotal)
+        new_total = subtotal - discount
+        cancellation = EnrollmentServiceCancellation(
+            enrollment_id=enrollment.id,
+            requested_by_id=self.actor.id,
+            course_id=data.course_id,
+            service_type=data.service_type,
+            service_key=service_key,
+            service_name=service_name,
+            original_price=original_price,
+            total_sessions=total_sessions,
+            attended_sessions=attended,
+            attendance_charge=attendance_charge,
+            cancellation_fee=cancellation_fee,
+            retained_amount=retained,
+            old_total=old_total,
+            new_total=new_total,
+            reason=data.reason,
+            excess_handling=data.excess_handling,
+            refund_amount=Decimal("0"),
+            refund_status="NONE",
+        )
+        enrollment.subtotal, enrollment.discount_amount, enrollment.total_amount = (
+            subtotal,
+            discount,
+            new_total,
+        )
+        if data.service_type == "COURSE":
+            assert data.course_id is not None
+            next(
+                row for row in enrollment.courses if row.course_id == data.course_id
+            ).status = "CANCELLED"
+        elif data.service_type == "EXAM":
+            enrollment.exam_price, enrollment.exam_session_count = Decimal("0"), 0
+        elif data.service_type == "BOOK":
+            enrollment.book_price = Decimal("0")
+        else:
+            enrollment.special_support_name = None
+            enrollment.special_support_period = None
+            enrollment.special_support_price = Decimal("0")
+        enrollment.service_cancellations.append(cancellation)
+        self._refresh_balance(enrollment)
+        cancellation.refund_amount = min(
+            max(enrollment.credit_balance - prior_credit, Decimal("0")),
+            max(old_total - new_total, Decimal("0")),
+        )
+        if data.excess_handling == "REFUND" and cancellation.refund_amount > 0:
+            cancellation.refund_status = "PENDING"
+        AuditRepository(self.session).record(
+            action="school.service.cancelled",
+            resource_type="student_enrollment",
+            resource_id=str(enrollment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={
+                "service": service_key,
+                "attended": attended,
+                "retained": str(retained),
+                "refund": str(cancellation.refund_amount),
+            },
+        )
+        self.session.commit()
+        return self.get_student(student_id)
+
+    def add_payment(
+        self, student_id: UUID, enrollment_id: UUID, data: EnrollmentPaymentCreate
+    ) -> Student:
+        enrollment = self._locked_enrollment(student_id, enrollment_id)
+        self._append_payment(enrollment, data)
+        AuditRepository(self.session).record(
+            action="school.payment.added",
+            resource_type="student_enrollment",
+            resource_id=str(enrollment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={"amount": str(data.amount), "method": data.method},
+        )
+        self.session.commit()
+        return self.get_student(student_id)
+
+    def change_special_support(
+        self, student_id: UUID, enrollment_id: UUID, data: SupportChangeCreate
+    ) -> Student:
+        enrollment = self._locked_enrollment(student_id, enrollment_id)
+        if any(change.refund_status == "PENDING" for change in enrollment.class_changes) or any(
+            row.refund_status == "PENDING" for row in enrollment.service_cancellations
+        ):
+            raise SchoolConflictError("ابتدا مدیر باید درخواست بازپرداخت قبلی را تعیین تکلیف کند.")
+        support = self.session.scalar(
+            select(SchoolSpecialSupport)
+            .where(
+                SchoolSpecialSupport.id == data.support_id,
+                SchoolSpecialSupport.workspace_owner_id == self.workspace_owner_id,
+                SchoolSpecialSupport.school_institute_id == self.school_institute_id,
+                SchoolSpecialSupport.is_active.is_(True),
+            )
+            .with_for_update()
+        )
+        if support is None:
+            raise SchoolError("پشتیبان ویژه انتخاب‌شده فعال یا در دسترس نیست.")
+        old_price = enrollment.special_support_price
+        if old_price != data.expected_old_price or enrollment.total_amount != data.expected_total:
+            raise SchoolConflictError(
+                "قیمت پشتیبان یا فاکتور تغییر کرده است؛ صفحه را تازه‌سازی کنید."
+            )
+        new_price = support.seasonal_price if data.period == "SEASONAL" else support.monthly_price
+        old_total = enrollment.total_amount
+        subtotal = enrollment.subtotal - old_price + new_price
+        discount = min(enrollment.discount_amount, subtotal)
+        new_total = subtotal - discount
+        change = EnrollmentSupportChange(
+            enrollment_id=enrollment.id,
+            changed_by_id=self.actor.id,
+            old_name=enrollment.special_support_name,
+            old_period=enrollment.special_support_period,
+            old_price=old_price,
+            new_name=support.name,
+            new_period=data.period,
+            new_price=new_price,
+            old_total=old_total,
+            new_total=new_total,
+            reason=data.reason,
+        )
+        enrollment.subtotal = subtotal
+        enrollment.discount_amount = discount
+        enrollment.total_amount = new_total
+        enrollment.special_support_name = support.name
+        enrollment.special_support_period = data.period
+        enrollment.special_support_price = new_price
+        enrollment.support_changes.append(change)
+        self._refresh_balance(enrollment)
+        AuditRepository(self.session).record(
+            action="school.support.changed",
+            resource_type="student_enrollment",
+            resource_id=str(enrollment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={
+                "old_price": str(old_price),
+                "new_price": str(new_price),
+                "old_total": str(old_total),
+                "new_total": str(new_total),
+            },
+        )
+        self.session.commit()
+        return self.get_student(student_id)
+
+    def process_service_cancellation_refund(
+        self, student_id: UUID, enrollment_id: UUID, cancellation_id: UUID, data: RefundAction
+    ) -> Student:
+        self._require_manager()
+        enrollment = self._locked_enrollment(student_id, enrollment_id)
+        cancellation = next(
+            (row for row in enrollment.service_cancellations if row.id == cancellation_id), None
+        )
+        if cancellation is None or cancellation.refund_status != "PENDING":
+            raise SchoolConflictError(
+                "درخواست بازپرداخت در انتظار تأیید پیدا نشد یا قبلاً انجام شده است."
+            )
+        if data.action == "KEEP_CREDIT":
+            cancellation.refund_status = "CANCELLED"
+        else:
+            if cancellation.refund_amount > enrollment.credit_balance:
+                raise SchoolConflictError("اعتبار فعلی برای بازپرداخت کافی نیست.")
+            if data.paid_on is None or data.paid_on > date.today():
+                raise SchoolError("تاریخ بازپرداخت انجام‌شده نمی‌تواند در آینده باشد.")
+            cancellation.refund_status, cancellation.refund_method = "PAID", data.method
+            cancellation.refunded_on, cancellation.refund_tracking_code = (
+                data.paid_on,
+                data.tracking_code,
+            )
+            cancellation.refunded_by_id = self.actor.id
+        self._refresh_balance(enrollment)
+        AuditRepository(self.session).record(
+            action="school.service_cancellation_refund.updated",
+            resource_type="student_enrollment",
+            resource_id=str(enrollment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={
+                "cancellation_id": str(cancellation.id),
+                "action": data.action,
+                "amount": str(cancellation.refund_amount),
+            },
+        )
+        self.session.commit()
+        return self.get_student(student_id)
+
+    def process_refund(
+        self, student_id: UUID, enrollment_id: UUID, change_id: UUID, data: RefundAction
+    ) -> Student:
+        self._require_manager()
+        enrollment = self._locked_enrollment(student_id, enrollment_id)
+        change = next((row for row in enrollment.class_changes if row.id == change_id), None)
+        if change is None or change.refund_status != "PENDING":
+            raise SchoolConflictError(
+                "درخواست بازپرداخت در انتظار تأیید پیدا نشد یا قبلاً انجام شده است."
+            )
+        if data.action == "KEEP_CREDIT":
+            change.refund_status = "CANCELLED"
+        else:
+            if change.refund_amount > enrollment.credit_balance:
+                raise SchoolConflictError(
+                    "اعتبار فعلی برای بازپرداخت کافی نیست؛ پرونده را دوباره بررسی کنید."
+                )
+            if data.paid_on is None or data.paid_on > date.today():
+                raise SchoolError("تاریخ بازپرداخت انجام‌شده نمی‌تواند در آینده باشد.")
+            change.refund_status, change.refund_method = "PAID", data.method
+            change.refunded_on, change.refund_tracking_code = data.paid_on, data.tracking_code
+            change.refunded_by_id = self.actor.id
+        self._refresh_balance(enrollment)
+        AuditRepository(self.session).record(
+            action="school.refund.updated",
+            resource_type="student_enrollment",
+            resource_id=str(enrollment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={
+                "change_id": str(change.id),
+                "action": data.action,
+                "amount": str(change.refund_amount),
+            },
+        )
+        self.session.commit()
+        return self.get_student(student_id)
+
     def update_payment_status(
         self, payment_id: UUID, data: PaymentStatusUpdate
     ) -> EnrollmentPayment:
@@ -750,22 +1405,31 @@ class SchoolService:
         )
         if payment is None:
             raise SchoolError("Payment was not found")
-        if payment.status == "PAID":
-            raise SchoolConflictError("A paid payment cannot be changed")
-        payment.status = data.status
-        enrollment = self.session.get(StudentEnrollment, payment.enrollment_id)
-        assert enrollment is not None
-        payments = list(
-            self.session.scalars(
-                select(EnrollmentPayment).where(EnrollmentPayment.enrollment_id == enrollment.id)
+        student_id = self.session.scalar(
+            select(StudentEnrollment.student_id).where(
+                StudentEnrollment.id == payment.enrollment_id
             )
         )
-        paid = sum((row.amount for row in payments if row.status == "PAID"), Decimal("0"))
-        if paid > enrollment.total_amount:
-            raise SchoolError("Payments cannot exceed the enrollment total")
-        enrollment.amount_paid = paid
-        enrollment.balance_due = enrollment.total_amount - paid
-        enrollment.status = self._status(enrollment.total_amount, paid, payments)
+        assert student_id is not None
+        enrollment = self._locked_enrollment(student_id, payment.enrollment_id)
+        # Read again after the enrollment lock; class changes and all payments share this lock.
+        payment = next(row for row in enrollment.payments if row.id == payment_id)
+        if payment.status in {"PAID", "CANCELLED"}:
+            raise SchoolConflictError("پرداخت وصول‌شده یا لغوشده قابل تغییر نیست.")
+        if data.status == "PAID" and payment.amount > enrollment.balance_due:
+            raise SchoolConflictError(
+                "مبلغ این پرداخت بیشتر از مانده است؛ برنامه پرداخت را اصلاح کنید."
+            )
+        payment.status = data.status
+        self._refresh_balance(enrollment)
+        AuditRepository(self.session).record(
+            action="school.payment.status_changed",
+            resource_type="enrollment_payment",
+            resource_id=str(payment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={"status": data.status},
+        )
         self.session.commit()
         return payment
 

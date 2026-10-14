@@ -37,7 +37,8 @@ export function SchoolAccountingPage() {
   const records = useMemo(() => filteredStudents.flatMap((student) => student.enrollments.map((enrollment) => ({ student, enrollment }))), [filteredStudents]);
   const collections = useMemo(() => {
     const paid = records.flatMap((record) => record.enrollment.payments.filter((payment) => payment.status === "PAID"));
-    const totalFor = (method: string) => paid.filter((payment) => payment.method === method).reduce((sum, payment) => sum + Number(payment.amount), 0);
+    const refunds = records.flatMap((r) => r.enrollment.class_changes ?? []).filter((c) => c.refund_status === "PAID");
+    const totalFor = (method: string) => paid.filter((payment) => payment.method === method).reduce((sum, payment) => sum + Number(payment.amount), 0) - refunds.filter((c) => c.refund_method === method).reduce((sum, c) => sum + Number(c.refund_amount), 0);
     return { cash: totalFor("CASH"), transfer: totalFor("BANK_TRANSFER"), check: totalFor("CHECK"), installment: totalFor("INSTALLMENT") };
   }, [records]);
   const debtors = useMemo(() => records.filter((record) => Number(record.enrollment.balance_due) > 0).sort((a, b) => Number(b.enrollment.balance_due) - Number(a.enrollment.balance_due)), [records]);

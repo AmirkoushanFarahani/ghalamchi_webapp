@@ -33,6 +33,7 @@ class CourseCreate(BaseModel):
     instructor_name: str | None = Field(default=None, max_length=200)
     grade: SchoolGrade
     price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    session_count: int = Field(default=0, ge=0, le=500)
 
 
 class CourseUpdate(CourseCreate):
@@ -47,6 +48,7 @@ class CourseRead(ORMModel):
     instructor_name: str | None
     grade: SchoolGrade
     price: Decimal
+    session_count: int = 0
     is_active: bool
 
 
@@ -192,7 +194,101 @@ class StudentEnrollmentCreate(BaseModel):
 class EnrollmentCourseRead(ORMModel):
     course_id: UUID
     course_name: str
+    instructor_name: str | None = None
     price: Decimal
+    session_count: int = 0
+    status: Literal["ACTIVE", "CANCELLED"] = "ACTIVE"
+
+
+class AttendanceCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    service_type: Literal["COURSE", "EXAM"]
+    course_id: UUID | None = None
+    session_number: int = Field(gt=0, le=500)
+    attended_on: date
+    notes: str | None = Field(default=None, max_length=500)
+
+    @model_validator(mode="after")
+    def course_attendance_requires_course(self) -> "AttendanceCreate":
+        if (self.service_type == "COURSE") != (self.course_id is not None):
+            raise ValueError(
+                "Course attendance requires a course; exam attendance must not include one"
+            )
+        return self
+
+
+class AttendanceRead(ORMModel):
+    id: UUID
+    service_type: Literal["COURSE", "EXAM"]
+    course_id: UUID | None
+    session_number: int
+    attended_on: date
+    notes: str | None
+    created_at: datetime
+
+
+class ServiceCancellationCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    service_type: Literal["COURSE", "EXAM", "BOOK", "SUPPORT"]
+    course_id: UUID | None = None
+    attended_sessions: int = Field(default=0, ge=0, le=500)
+    expected_original_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    expected_total: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    reason: str = Field(min_length=1, max_length=500)
+    excess_handling: Literal["CREDIT", "REFUND"] = "CREDIT"
+
+    @model_validator(mode="after")
+    def course_cancellation_requires_course(self) -> "ServiceCancellationCreate":
+        if (self.service_type == "COURSE") != (self.course_id is not None):
+            raise ValueError(
+                "Course cancellation requires a course; other services must not include one"
+            )
+        return self
+
+
+class ServiceCancellationRead(ORMModel):
+    id: UUID
+    service_type: Literal["COURSE", "EXAM", "BOOK", "SUPPORT"]
+    service_name: str
+    original_price: Decimal
+    total_sessions: int
+    attended_sessions: int
+    attendance_charge: Decimal
+    cancellation_fee: Decimal
+    retained_amount: Decimal
+    old_total: Decimal
+    new_total: Decimal
+    reason: str
+    excess_handling: Literal["CREDIT", "REFUND"]
+    refund_amount: Decimal
+    refund_status: Literal["NONE", "PENDING", "PAID", "CANCELLED"]
+    refund_method: Literal["CASH", "BANK_TRANSFER"] | None
+    refunded_on: date | None
+    refund_tracking_code: str | None
+    created_at: datetime
+
+
+class SupportChangeCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    support_id: UUID
+    period: Literal["MONTHLY", "SEASONAL"]
+    expected_old_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    expected_total: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    reason: str = Field(min_length=1, max_length=500)
+
+
+class SupportChangeRead(ORMModel):
+    id: UUID
+    old_name: str | None
+    old_period: Literal["MONTHLY", "SEASONAL"] | None
+    old_price: Decimal
+    new_name: str
+    new_period: Literal["MONTHLY", "SEASONAL"]
+    new_price: Decimal
+    old_total: Decimal
+    new_total: Decimal
+    reason: str
+    created_at: datetime
 
 
 class EnrollmentPaymentRead(ORMModel):
@@ -202,7 +298,7 @@ class EnrollmentPaymentRead(ORMModel):
     due_date: date | None
     tracking_code: str | None
     sayad_id: str | None
-    status: Literal["PENDING", "PAID", "BOUNCED"]
+    status: Literal["PENDING", "PAID", "BOUNCED", "CANCELLED"]
     created_at: datetime
     updated_at: datetime
 
@@ -213,15 +309,21 @@ class EnrollmentRead(ORMModel):
     discount_amount: Decimal
     book_price: Decimal
     exam_price: Decimal
+    exam_session_count: int = 0
     special_support_name: str | None
     special_support_period: Literal["MONTHLY", "SEASONAL"] | None
     special_support_price: Decimal
     total_amount: Decimal
     amount_paid: Decimal
     balance_due: Decimal
+    credit_balance: Decimal = Decimal("0")
     status: Literal["UNPAID", "PARTIALLY_PAID", "PAID", "OVERDUE"]
     courses: list[EnrollmentCourseRead]
     payments: list[EnrollmentPaymentRead]
+    class_changes: list["ClassChangeRead"] = Field(default_factory=list)
+    attendance_records: list[AttendanceRead] = Field(default_factory=list)
+    service_cancellations: list[ServiceCancellationRead] = Field(default_factory=list)
+    support_changes: list[SupportChangeRead] = Field(default_factory=list)
 
 
 class StudentRead(ORMModel):
@@ -248,7 +350,57 @@ class StudentRead(ORMModel):
 
 class PaymentStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    status: Literal["PAID", "BOUNCED"]
+    status: Literal["PAID", "BOUNCED", "CANCELLED"]
+
+
+class ClassChangeCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    new_course_id: UUID
+    expected_old_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    expected_new_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    expected_total: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
+    reason: str = Field(min_length=1, max_length=500)
+    excess_handling: Literal["CREDIT", "REFUND"] = "CREDIT"
+    payment: EnrollmentPaymentCreate | None = None
+
+
+class RefundAction(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    action: Literal["PAY", "KEEP_CREDIT"]
+    method: Literal["CASH", "BANK_TRANSFER"] | None = None
+    paid_on: date | None = None
+    tracking_code: str | None = Field(default=None, max_length=100)
+
+    @model_validator(mode="after")
+    def paid_refund_requires_details(self) -> "RefundAction":
+        if self.action == "PAY" and (self.method is None or self.paid_on is None):
+            raise ValueError("A paid refund requires a method and payment date")
+        return self
+
+
+class ClassChangeRead(ORMModel):
+    id: UUID
+    old_course_name: str
+    new_course_name: str
+    old_instructor_name: str | None
+    new_instructor_name: str | None
+    old_price: Decimal
+    new_price: Decimal
+    old_total: Decimal
+    new_total: Decimal
+    reason: str
+    changed_by_id: UUID
+    created_at: datetime
+    excess_handling: Literal["CREDIT", "REFUND"]
+    refund_amount: Decimal
+    refund_status: Literal["NONE", "PENDING", "PAID", "CANCELLED"]
+    refund_method: Literal["CASH", "BANK_TRANSFER"] | None
+    refunded_on: date | None
+    refund_tracking_code: str | None
+
+
+EnrollmentRead.model_rebuild()
+StudentRead.model_rebuild()
 
 
 class StudentSegmentationRead(BaseModel):

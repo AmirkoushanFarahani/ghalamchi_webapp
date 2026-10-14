@@ -11,7 +11,7 @@ export function SecretaryDashboardPage() {
       <div className="button-row">
         <Link to="/students" className="button button--primary">ثبت‌نام دانش‌آموز</Link>
         <Link to="/student-records" className="button button--secondary">پرونده دانش‌آموزان</Link>
-        <Link to="/courses" className="button button--secondary">دوره‌ها و شهریه‌ها</Link>
+        <Link to="/courses" className="button button--secondary">کلاس‌ها و شهریه‌ها</Link>
         <Link to="/tuition/due-payments" className="button button--secondary">پیگیری چک‌ها و اقساط</Link>
         <Link to="/tuition/outstanding" className="button button--secondary">پیگیری شهریه دانش‌آموز</Link>
       </div>

@@ -30,6 +30,32 @@ import { calendarMonth } from "../src/components/DatePicker";
 import { BusinessContext, businessProfiles, businessText, type BusinessCategory } from "../src/business/BusinessContext";
 import { navigationForBusiness } from "../src/layouts/AppLayout";
 import { Field, PageHeader } from "../src/components/ui";
+import { classChangeAmounts } from "../src/pages/StudentClassActions";
+import classActionsSource from "../src/pages/StudentClassActions.tsx?raw";
+import studentDetailSource from "../src/pages/StudentDetailPage.tsx?raw";
+import type { Course, Enrollment, EnrollmentCourse } from "../src/types/api";
+
+test("class replacement previews extra payment, preserved discount and student credit", () => {
+  const enrollment = { subtotal: "1000", discount_amount: "100", total_amount: "900", amount_paid: "900" } as Enrollment;
+  const oldClass = { course_id: "original", course_name: "Original", price: "1000" } as EnrollmentCourse;
+  const replacement = { id: "replacement", name: "Replacement", grade: "GRADE_10", price: "1400", instructor_name: "New teacher", is_active: true } as Course;
+  assert.deepEqual(classChangeAmounts(enrollment, oldClass, replacement), { total: 1300, difference: 400, additionalDue: 400, balance: 400, credit: 0 });
+  assert.deepEqual(classChangeAmounts(enrollment, oldClass, { ...replacement, price: "700" }), { total: 600, difference: -300, additionalDue: 0, balance: 0, credit: 300 });
+  const credit = { ...enrollment, subtotal: "700", total_amount: "600", amount_paid: "900" };
+  assert.equal(classChangeAmounts(credit, { ...oldClass, price: "700" }, { ...replacement, price: "1100" }).additionalDue, 100);
+});
+
+test("student class actions include due dates, credit/refund choice, history and manager-only refunds", () => {
+  assert.ok(classActionsSource.includes("expected_new_price"));
+  assert.ok(classActionsSource.includes('c.is_active && !enrollment.courses.some'));
+  assert.ok(classActionsSource.includes('method === "CHECK" || method === "INSTALLMENT"'));
+  assert.ok(classActionsSource.includes('value="CREDIT"'));
+  assert.ok(classActionsSource.includes('value="REFUND"'));
+  assert.ok(studentDetailSource.includes('can("school:enroll")'));
+  assert.ok(studentDetailSource.includes('can("school:manage")'));
+  assert.ok(studentDetailSource.includes("سابقه تغییر کلاس و بازپرداخت"));
+  assert.ok(layoutSource.includes("کلاس‌ها و شهریه‌ها"));
+});
 
 test("business profiles change presentation but preserve financial routes and values", () => {
   const paths = (category: BusinessCategory) => navigationForBusiness(category).flatMap((entry) => "path" in entry ? [entry.path] : entry.items.map((item) => item.path)).sort();

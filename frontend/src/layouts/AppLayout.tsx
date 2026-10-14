@@ -33,7 +33,7 @@ export function navigationForBusiness(category: BusinessCategory) {
     { label: "ثبت‌نام", items: [
       { label: "دانش‌آموزان", path: "/students", permission: "school:read" },
       { label: "پرونده مشتریان", path: "/student-records", permission: "school:read" },
-      { label: "دوره‌ها و شهریه‌ها", path: "/courses", permission: "school:read" },
+      { label: "کلاس‌ها و شهریه‌ها", path: "/courses", permission: "school:read" },
     ] },
     { label: "هزینه‌ها", path: "/school-costs", permission: "school:manage" },
     { label: "مدیریت مراکز", path: "/school-institutes", permission: "school:manage" },

@@ -22,8 +22,12 @@ from backend.app.db.models.identity import Permission, Role, User, role_permissi
 from backend.app.db.models.ml import MLModelVersion, MLPrediction, MLPredictionFeedback
 from backend.app.db.models.school import (
     DiscountCode,
+    EnrollmentClassChange,
     EnrollmentCourse,
     EnrollmentPayment,
+    EnrollmentServiceAttendance,
+    EnrollmentServiceCancellation,
+    EnrollmentSupportChange,
     SchoolCost,
     SchoolCourse,
     SchoolExamPlan,
@@ -45,6 +49,10 @@ __all__ = [
     "Student",
     "StudentEnrollment",
     "EnrollmentCourse",
+    "EnrollmentClassChange",
+    "EnrollmentServiceAttendance",
+    "EnrollmentServiceCancellation",
+    "EnrollmentSupportChange",
     "EnrollmentPayment",
     "SchoolRegistrationFees",
     "AuditEvent",

@@ -12,23 +12,49 @@ import os
 from datetime import date, datetime
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 from uuid import UUID
-
-from sqlalchemy import select
 
 from backend.app.core.passwords import hash_password
 from backend.app.db.bootstrap import seed_rbac
 from backend.app.db.database import SessionLocal
 from backend.app.db.models import (
-    DiscountCode, EnrollmentCourse, EnrollmentPayment, Role, SchoolCost,
-    SchoolCourse, SchoolExamPlan, SchoolInstitute, SchoolRegistrationFees,
-    SchoolSpecialSupport, Student, StudentEnrollment, User,
+    DiscountCode,
+    EnrollmentClassChange,
+    EnrollmentCourse,
+    EnrollmentPayment,
+    EnrollmentServiceAttendance,
+    EnrollmentServiceCancellation,
+    Role,
+    SchoolCost,
+    SchoolCourse,
+    SchoolExamPlan,
+    SchoolInstitute,
+    SchoolRegistrationFees,
+    SchoolSpecialSupport,
+    Student,
+    StudentEnrollment,
+    User,
 )
+from sqlalchemy import select
 
 MANAGER_EMAIL = "demo.school.manager2@example.com"
-MODELS = (SchoolInstitute, SchoolCourse, DiscountCode, SchoolRegistrationFees,
-          SchoolExamPlan, SchoolSpecialSupport, Student, StudentEnrollment,
-          EnrollmentCourse, EnrollmentPayment, SchoolCost)
+MODELS: tuple[type[Any], ...] = (
+    SchoolInstitute,
+    SchoolCourse,
+    DiscountCode,
+    SchoolRegistrationFees,
+    SchoolExamPlan,
+    SchoolSpecialSupport,
+    Student,
+    StudentEnrollment,
+    EnrollmentCourse,
+    EnrollmentPayment,
+    EnrollmentClassChange,
+    EnrollmentServiceAttendance,
+    EnrollmentServiceCancellation,
+    SchoolCost,
+)
 SNAPSHOT = Path(__file__).parent / "data" / "demo_database.json.gz.b64"
 
 
@@ -37,59 +63,112 @@ def export_demo() -> None:
         manager = session.scalar(select(User).where(User.email == MANAGER_EMAIL))
         if manager is None:
             raise ValueError("Demo manager not found")
-        users = [manager, *session.scalars(select(User).where(
-            User.school_manager_id == manager.id,
-            User.email.like("demo.school.%@example.com"),
-        ).order_by(User.email))]
-        users_by_id = {user.id: user for user in users}
-        data = {"format_version": 1, "users": [{
-            key: getattr(user, key) for key in (
-                "id", "email", "first_name", "last_name", "business_category",
-                "school_manager_id", "school_institute_id", "active_school_institute_id",
-            )
-        } | {"roles": user.role_names} for user in users], "tables": {}}
-        students = list(session.scalars(select(Student).where(
-            Student.workspace_owner_id == manager.id,
-            (Student.national_id.like("910000%") | Student.national_id.like("920000%")),
-            Student.notes.like("%آزمایشی%") | Student.national_id.in_(
-                [f"910000000{i}" for i in range(1, 7)]
+        users = [
+            manager,
+            *session.scalars(
+                select(User)
+                .where(
+                    User.school_manager_id == manager.id,
+                    User.email.like("demo.school.%@example.com"),
+                )
+                .order_by(User.email)
             ),
-        )))
+        ]
+        users_by_id = {user.id: user for user in users}
+        data: dict[str, Any] = {
+            "format_version": 1,
+            "users": [
+                {
+                    key: getattr(user, key)
+                    for key in (
+                        "id",
+                        "email",
+                        "first_name",
+                        "last_name",
+                        "business_category",
+                        "school_manager_id",
+                        "school_institute_id",
+                        "active_school_institute_id",
+                    )
+                }
+                | {"roles": user.role_names}
+                for user in users
+            ],
+            "tables": {},
+        }
+        students = list(
+            session.scalars(
+                select(Student).where(
+                    Student.workspace_owner_id == manager.id,
+                    (Student.national_id.like("910000%") | Student.national_id.like("920000%")),
+                    Student.notes.like("%آزمایشی%")
+                    | Student.national_id.in_([f"910000000{i}" for i in range(1, 7)]),
+                )
+            )
+        )
         student_ids = [student.id for student in students]
-        enrollments = list(session.scalars(select(StudentEnrollment).where(
-            StudentEnrollment.student_id.in_(student_ids)
-        )))
+        enrollments = list(
+            session.scalars(
+                select(StudentEnrollment).where(StudentEnrollment.student_id.in_(student_ids))
+            )
+        )
         enrollment_ids = [row.id for row in enrollments]
         for model in MODELS:
+            rows: list[Any]
             if model is SchoolInstitute:
-                rows = session.scalars(select(model).where(model.manager_id == manager.id))
+                rows = list(session.scalars(select(model).where(model.manager_id == manager.id)))
             elif model is Student:
                 rows = students
             elif model is StudentEnrollment:
                 rows = enrollments
-            elif model in (EnrollmentCourse, EnrollmentPayment):
-                rows = session.scalars(select(model).where(model.enrollment_id.in_(enrollment_ids)))
+            elif model in (
+                EnrollmentCourse,
+                EnrollmentPayment,
+                EnrollmentClassChange,
+                EnrollmentServiceAttendance,
+                EnrollmentServiceCancellation,
+            ):
+                rows = list(
+                    session.scalars(select(model).where(model.enrollment_id.in_(enrollment_ids)))
+                )
             elif model is SchoolCost:
-                rows = session.scalars(select(model).where(
-                    model.workspace_owner_id == manager.id, model.factor_number.like("GIRLS-COST-%")
-                ))
+                rows = list(
+                    session.scalars(
+                        select(model).where(
+                            model.workspace_owner_id == manager.id,
+                            model.factor_number.like("GIRLS-COST-%"),
+                        )
+                    )
+                )
             else:
-                rows = session.scalars(select(model).where(model.workspace_owner_id == manager.id))
-            records = []
+                rows = list(
+                    session.scalars(select(model).where(model.workspace_owner_id == manager.id))
+                )
+            records: list[dict[str, Any]] = []
             for row in rows:
-                record = {column.name: getattr(row, column.name) for column in model.__table__.columns}
+                record: dict[str, Any] = {
+                    column.name: getattr(row, column.name) for column in model.__table__.columns
+                }
                 # Do not export references to non-demo staff accounts.
-                for field in ("created_by_id", "recorded_by_id"):
-                    if field in record and record[field] not in users_by_id:
+                for field in ("created_by_id", "recorded_by_id", "changed_by_id", "refunded_by_id"):
+                    if (
+                        field in record
+                        and record[field] is not None
+                        and record[field] not in users_by_id
+                    ):
                         record[field] = manager.id
                 records.append(record)
             data["tables"][model.__tablename__] = records
         print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
 
 
-def typed_values(model, record: dict) -> dict:
+def typed_values(model: type[Any], record: dict[str, Any]) -> dict[str, Any]:
     result = {}
     for column in model.__table__.columns:
+        # Older committed snapshots deliberately do not contain newly added fields.
+        # Omitting them lets schema defaults apply instead of explicitly writing NULL.
+        if column.name not in record:
+            continue
         value = record.get(column.name)
         if value is not None:
             datatype = column.type.python_type
@@ -111,25 +190,37 @@ def import_demo() -> None:
     if data["format_version"] != 1:
         raise ValueError("Unsupported snapshot version")
     with SessionLocal.begin() as session:
-        if session.scalar(select(User.id).where(User.email.in_([u["email"] for u in data["users"]]))):
+        if session.scalar(
+            select(User.id).where(User.email.in_([u["email"] for u in data["users"]]))
+        ):
             raise ValueError("Demo accounts already exist; no data was imported or overwritten")
         seed_rbac(session)
         users = []
         for record in data["users"]:
             values = {key: value for key, value in record.items() if key != "roles"}
-            for key in ("id", "school_manager_id", "school_institute_id", "active_school_institute_id"):
+            for key in (
+                "id",
+                "school_manager_id",
+                "school_institute_id",
+                "active_school_institute_id",
+            ):
                 if values[key] is not None:
                     values[key] = UUID(values[key])
             pending_school = values.pop("school_institute_id")
             pending_active = values.pop("active_school_institute_id")
-            user = User(**values, password_hash=hash_password(password), roles=[
-                session.scalar(select(Role).where(Role.name == name)) for name in record["roles"]
-            ])
+            user = User(
+                **values,
+                password_hash=hash_password(password),
+                roles=[
+                    session.scalar(select(Role).where(Role.name == name))
+                    for name in record["roles"]
+                ],
+            )
             session.add(user)
             session.flush()
             users.append((user, pending_school, pending_active))
         for model in MODELS:
-            for record in data["tables"][model.__tablename__]:
+            for record in data["tables"].get(model.__tablename__, []):
                 if session.get(model, UUID(record["id"])) is not None:
                     raise ValueError("Snapshot ID already exists; import rolled back")
                 session.add(model(**typed_values(model, record)))

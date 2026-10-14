@@ -27,23 +27,29 @@ from backend.app.ml.registry import (
     PredictionInputError,
 )
 from backend.app.schemas.school import (
+    AttendanceCreate,
+    AttendanceRead,
+    ClassChangeCreate,
+    ClassChangeRead,
     CourseCreate,
     CourseRead,
     CourseUpdate,
     DiscountCodeCreate,
     DiscountCodeRead,
     EnrollmentCourseRead,
+    EnrollmentPaymentCreate,
     EnrollmentPaymentRead,
     EnrollmentRead,
     ExamPlanRead,
     ExamPlanUpdate,
     PaymentStatusUpdate,
+    RefundAction,
     RegistrationFeesRead,
     RegistrationFeesUpdate,
+    SchoolComparisonRead,
     SchoolCostCreate,
     SchoolCostList,
     SchoolCostRead,
-    SchoolComparisonRead,
     SchoolGrade,
     SchoolInstituteCreate,
     SchoolInstituteRead,
@@ -52,14 +58,18 @@ from backend.app.schemas.school import (
     SchoolSecretaryCreate,
     SchoolSecretaryPasswordReset,
     SchoolSecretaryRead,
-    SchoolSecretaryUpdate,
     SchoolSecretaryStatusUpdate,
+    SchoolSecretaryUpdate,
+    ServiceCancellationCreate,
+    ServiceCancellationRead,
     SpecialSupportCreate,
     SpecialSupportRead,
     SpecialSupportUpdate,
     StudentEnrollmentCreate,
     StudentRead,
     StudentSegmentationRead,
+    SupportChangeCreate,
+    SupportChangeRead,
 )
 from backend.app.services.ml import MLService
 from backend.app.services.school import SchoolConflictError, SchoolError, SchoolService
@@ -99,6 +109,7 @@ def student_read(student: Student) -> StudentRead:
                 discount_amount=enrollment.discount_amount,
                 book_price=enrollment.book_price,
                 exam_price=enrollment.exam_price,
+                exam_session_count=enrollment.exam_session_count,
                 special_support_name=enrollment.special_support_name,
                 special_support_period=cast(
                     Literal["MONTHLY", "SEASONAL"] | None,
@@ -108,6 +119,20 @@ def student_read(student: Student) -> StudentRead:
                 total_amount=enrollment.total_amount,
                 amount_paid=enrollment.amount_paid,
                 balance_due=enrollment.balance_due,
+                credit_balance=enrollment.credit_balance,
+                class_changes=[
+                    ClassChangeRead.model_validate(row) for row in enrollment.class_changes
+                ],
+                attendance_records=[
+                    AttendanceRead.model_validate(row) for row in enrollment.attendance_records
+                ],
+                service_cancellations=[
+                    ServiceCancellationRead.model_validate(row)
+                    for row in enrollment.service_cancellations
+                ],
+                support_changes=[
+                    SupportChangeRead.model_validate(row) for row in enrollment.support_changes
+                ],
                 status=cast(
                     Literal["UNPAID", "PARTIALLY_PAID", "PAID", "OVERDUE"],
                     enrollment.status,
@@ -161,7 +186,9 @@ def select_institute(
     actor: Annotated[User, Depends(require_permission("school:manage"))],
 ) -> SchoolInstituteRead:
     try:
-        return institute_read(session, service(session, actor).select_institute(data.school_institute_id))
+        return institute_read(
+            session, service(session, actor).select_institute(data.school_institute_id)
+        )
     except SchoolError as exc:
         raise HTTPException(404, str(exc)) from exc
 
@@ -194,7 +221,11 @@ def assign_secretary(
         raise HTTPException(404, str(exc)) from exc
 
 
-@router.post("/institutes/{school_id}/secretaries", response_model=SchoolInstituteRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/institutes/{school_id}/secretaries",
+    response_model=SchoolInstituteRead,
+    status_code=status.HTTP_201_CREATED,
+)
 def create_secretary(
     school_id: UUID,
     data: SchoolSecretaryCreate,
@@ -214,7 +245,8 @@ def create_secretary(
 
 @router.get("/institutes/{school_id}/secretaries", response_model=list[SchoolSecretaryRead])
 def list_secretaries(
-    school_id: UUID, session: SessionDep,
+    school_id: UUID,
+    session: SessionDep,
     actor: Annotated[User, Depends(require_permission("school:manage"))],
 ) -> list[User]:
     try:
@@ -223,9 +255,14 @@ def list_secretaries(
         raise HTTPException(404, str(exc)) from exc
 
 
-@router.patch("/institutes/{school_id}/secretaries/{secretary_id}", response_model=SchoolSecretaryRead)
+@router.patch(
+    "/institutes/{school_id}/secretaries/{secretary_id}", response_model=SchoolSecretaryRead
+)
 def update_secretary(
-    school_id: UUID, secretary_id: UUID, data: SchoolSecretaryUpdate, session: SessionDep,
+    school_id: UUID,
+    secretary_id: UUID,
+    data: SchoolSecretaryUpdate,
+    session: SessionDep,
     actor: Annotated[User, Depends(require_permission("school:manage"))],
 ) -> User:
     try:
@@ -236,9 +273,14 @@ def update_secretary(
         raise HTTPException(404, str(exc)) from exc
 
 
-@router.patch("/institutes/{school_id}/secretaries/{secretary_id}/status", response_model=SchoolSecretaryRead)
+@router.patch(
+    "/institutes/{school_id}/secretaries/{secretary_id}/status", response_model=SchoolSecretaryRead
+)
 def set_secretary_status(
-    school_id: UUID, secretary_id: UUID, data: SchoolSecretaryStatusUpdate, session: SessionDep,
+    school_id: UUID,
+    secretary_id: UUID,
+    data: SchoolSecretaryStatusUpdate,
+    session: SessionDep,
     actor: Annotated[User, Depends(require_permission("school:manage"))],
 ) -> User:
     try:
@@ -268,7 +310,9 @@ def compare_institutes(
     actor: Annotated[User, Depends(require_permission("school:manage"))],
 ) -> list[SchoolComparisonRead]:
     try:
-        return [SchoolComparisonRead.model_validate(row) for row in service(session, actor).comparison()]
+        return [
+            SchoolComparisonRead.model_validate(row) for row in service(session, actor).comparison()
+        ]
     except SchoolError as exc:
         raise HTTPException(403, str(exc)) from exc
 
@@ -338,7 +382,7 @@ def update_special_support(
     data: SpecialSupportUpdate,
     session: SessionDep,
     actor: Annotated[User, Depends(require_permission("school:manage"))],
-) -> SchoolSpecialSupport:
+) -> SpecialSupportRead:
     try:
         return SpecialSupportRead.model_validate(
             service(session, actor).update_special_support(support_id, data)
@@ -498,6 +542,157 @@ def update_payment(
         raise HTTPException(409, str(exc)) from exc
     except SchoolError as exc:
         raise HTTPException(404, str(exc)) from exc
+
+
+@router.patch(
+    "/students/{student_id}/enrollments/{enrollment_id}/classes/{course_id}",
+    response_model=StudentRead,
+)
+def change_enrolled_class(
+    student_id: UUID,
+    enrollment_id: UUID,
+    course_id: UUID,
+    data: ClassChangeCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:enroll"))],
+) -> StudentRead:
+    try:
+        return student_read(
+            service(session, actor).change_class(student_id, enrollment_id, course_id, data)
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post(
+    "/students/{student_id}/enrollments/{enrollment_id}/payments",
+    response_model=StudentRead,
+    status_code=201,
+)
+def add_student_payment(
+    student_id: UUID,
+    enrollment_id: UUID,
+    data: EnrollmentPaymentCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:payments"))],
+) -> StudentRead:
+    try:
+        return student_read(service(session, actor).add_payment(student_id, enrollment_id, data))
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.patch(
+    "/students/{student_id}/enrollments/{enrollment_id}/special-support",
+    response_model=StudentRead,
+)
+def change_student_special_support(
+    student_id: UUID,
+    enrollment_id: UUID,
+    data: SupportChangeCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:enroll"))],
+) -> StudentRead:
+    try:
+        return student_read(
+            service(session, actor).change_special_support(student_id, enrollment_id, data)
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post(
+    "/students/{student_id}/enrollments/{enrollment_id}/attendance",
+    response_model=StudentRead,
+    status_code=201,
+)
+def record_student_attendance(
+    student_id: UUID,
+    enrollment_id: UUID,
+    data: AttendanceCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:enroll"))],
+) -> StudentRead:
+    try:
+        return student_read(
+            service(session, actor).record_attendance(student_id, enrollment_id, data)
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.post(
+    "/students/{student_id}/enrollments/{enrollment_id}/cancellations",
+    response_model=StudentRead,
+    status_code=201,
+)
+def cancel_student_service(
+    student_id: UUID,
+    enrollment_id: UUID,
+    data: ServiceCancellationCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:enroll"))],
+) -> StudentRead:
+    try:
+        return student_read(service(session, actor).cancel_service(student_id, enrollment_id, data))
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.patch(
+    "/students/{student_id}/enrollments/{enrollment_id}/refunds/{change_id}",
+    response_model=StudentRead,
+)
+def confirm_student_refund(
+    student_id: UUID,
+    enrollment_id: UUID,
+    change_id: UUID,
+    data: RefundAction,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> StudentRead:
+    try:
+        return student_read(
+            service(session, actor).process_refund(student_id, enrollment_id, change_id, data)
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.patch(
+    "/students/{student_id}/enrollments/{enrollment_id}/cancellations/{cancellation_id}/refund",
+    response_model=StudentRead,
+)
+def confirm_service_cancellation_refund(
+    student_id: UUID,
+    enrollment_id: UUID,
+    cancellation_id: UUID,
+    data: RefundAction,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> StudentRead:
+    try:
+        return student_read(
+            service(session, actor).process_service_cancellation_refund(
+                student_id, enrollment_id, cancellation_id, data
+            )
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.post("/accounting/students/{student_id}/segment", response_model=StudentSegmentationRead)

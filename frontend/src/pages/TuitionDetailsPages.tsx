@@ -44,7 +44,7 @@ function PageState({ children }: { children: (students: Student[], reload: () =>
 }
 
 function EditPaymentsModal({ row, close, changed }: { row: RecordRow; close: () => void; changed: () => void }) {
-  const [items, setItems] = useState<EnrollmentPayment[]>(row.enrollment.payments);
+  const [items, setItems] = useState<EnrollmentPayment[]>(row.enrollment.payments.filter((p) => p.status !== "CANCELLED"));
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [touched, setTouched] = useState(false);
@@ -91,9 +91,12 @@ export function ReceivedTuitionPage() {
   return <PageState>{(students) => {
     const rows = payments(records(students)).filter(({ payment }) => payment.status === "PAID");
     const total = rows.reduce((sum, row) => sum + Number(row.payment.amount), 0);
+    const refunds = records(students).flatMap(({ student, enrollment }) => (enrollment.class_changes ?? []).filter((c) => c.refund_status === "PAID").map((change) => ({ student, change })));
+    const refunded = refunds.reduce((sum, row) => sum + Number(row.change.refund_amount), 0);
     return <>
       <PageHeader title="جزئیات شهریه‌های دریافت‌شده" description="تمام پرداخت‌های وصول‌شده دانش‌آموزان، با روش، تاریخ ثبت یا وصول، مبلغ و وضعیت." action={<BackToDashboard />} />
-      <section className="kpi-grid kpi-grid--2"><Metric title="جمع دریافتی" value={total} tone="positive" /><Metric title="تعداد پرداخت‌های وصول‌شده" value={rows.length} count /></section>
+      <section className="kpi-grid"><Metric title="جمع دریافت‌های اصلی" value={total} tone="positive" /><Metric title="بازپرداخت‌شده به دانش‌آموزان" value={refunded} /><Metric title="دریافتی خالص" value={total - refunded} tone="positive" /><Metric title="تعداد پرداخت‌های وصول‌شده" value={rows.length} count /></section>
+      {refunds.length > 0 && <section className="card"><h2 className="card-title">بازپرداخت‌های واقعی</h2><div className="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>مبلغ بازپرداخت</th><th>تاریخ</th><th>روش</th><th>کد پیگیری</th></tr></thead><tbody>{refunds.map(({ student, change }) => <tr key={change.id}><td><Link to={`/students/${student.id}`}>{student.full_name}</Link></td><td><Money value={change.refund_amount}/></td><td><DateText value={change.refunded_on ?? ""}/></td><td>{change.refund_method ? methodLabel[change.refund_method] : "—"}</td><td>{change.refund_tracking_code || "—"}</td></tr>)}</tbody></table></div></section>}
       {rows.length ? <section className="card"><div className="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>روش پرداخت</th><th>مبلغ</th><th>تاریخ ثبت/وصول</th><th>سررسید</th><th>کد پیگیری</th><th>شناسه صیادی</th><th>وضعیت</th><th>پرونده</th></tr></thead><tbody>{rows.map(({ student, payment }) => <tr key={payment.id}><td><strong>{student.full_name}</strong><small>{student.guardian_full_name}</small></td><td>{methodLabel[payment.method]}</td><td><Money value={payment.amount} /></td><td><DateText value={payment.updated_at} /></td><td>{payment.due_date ? <DateText value={payment.due_date} /> : "—"}</td><td dir="ltr">{payment.tracking_code || "—"}</td><td dir="ltr">{payment.sayad_id || "—"}</td><td><StatusBadge value={payment.status} /></td><td><Link to={`/students/${student.id}`}>مشاهده</Link></td></tr>)}</tbody></table></div></section> : <EmptyState title="دریافتی وصول‌شده‌ای وجود ندارد" />}
     </>;
   }}</PageState>;
