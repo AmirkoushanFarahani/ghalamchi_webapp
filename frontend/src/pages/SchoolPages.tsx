@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
   DateField,
+  Confirm,
   DateText,
   EmptyState,
   ErrorState,
@@ -14,13 +15,15 @@ import {
   StatusBadge,
 } from "../components/ui";
 import { useAsync } from "../hooks/useAsync";
-import { api } from "../services/api";
+import { api, request } from "../services/api";
 import { Link } from "../routes/router";
 import { todayIso } from "../utils/date";
+import { currentExamPeriod, examPeriodLabel } from "../utils/examPricing";
 import type {
   Course,
   DiscountCode,
   ExamPlan,
+  ExamPricingPeriod,
   EnrollmentPayment,
   RegistrationFees,
   SpecialSupport,
@@ -69,13 +72,38 @@ export function CoursesPage() {
   const { can } = useAuth();
   const [open, setOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
+  const [classGradeFilter, setClassGradeFilter] = useState("");
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [catalogAction, setCatalogAction] = useState<{ kind: "courses" | "special-supports" | "exam-plans"; id: string; name: string; restore: boolean } | null>(null);
+  const [catalogBusy, setCatalogBusy] = useState(false);
+  const [catalogError, setCatalogError] = useState("");
   const [editingExamPlan, setEditingExamPlan] = useState<ExamPlan | null>(null);
   const [newExamPlan, setNewExamPlan] = useState(false);
+  const [copyingExamPlan, setCopyingExamPlan] = useState<ExamPlan | null>(null);
+  const [newExamPeriod, setNewExamPeriod] = useState(false);
+  const [examPeriodFilter, setExamPeriodFilter] = useState("current");
+  const [examGradeFilter, setExamGradeFilter] = useState("");
+  const [showExamHistory, setShowExamHistory] = useState(false);
+  const [examActionError, setExamActionError] = useState("");
+  const [examActionBusy, setExamActionBusy] = useState(false);
   const [editingSupport, setEditingSupport] = useState<SpecialSupport | null>(null);
   const [supportOpen, setSupportOpen] = useState(false);
   const [discount, setDiscount] = useState(false);
-  const courses = useAsync(() => api.get<Course[]>("/school/courses"), []);
-  const examPlans = useAsync(() => api.get<ExamPlan[]>("/school/exam-plans"), []);
+  const deletedQuery = showDeleted && can("school:manage") ? "?include_deleted=true" : "";
+  const courses = useAsync(() => api.get<Course[]>(`/school/courses${deletedQuery}`), [deletedQuery]);
+  const examPlans = useAsync(() => api.get<ExamPlan[]>(`/school/exam-plans${deletedQuery}`), [deletedQuery]);
+  const examPeriods = useAsync(() => api.get<ExamPricingPeriod[]>("/school/exam-pricing-periods"), []);
+  const currentPeriod = currentExamPeriod(examPeriods.data ?? [], todayIso());
+  const chosenPeriod = examPeriodFilter === "current" ? currentPeriod?.id : examPeriodFilter;
+  const periodGroups = [...(examPeriods.data ?? []).map((period) => ({ id: period.id, label: examPeriodLabel(period) })), { id: "legacy", label: "تعرفه‌های قبلی بدون بازه تاریخ" }]
+    .filter((period) => chosenPeriod === "all" || period.id === chosenPeriod);
+  async function restoreExamPlan(plan: ExamPlan) {
+    if (!window.confirm("این قیمت قبلی به‌عنوان نسخه جدید فعال شود؟ قیمت‌های ثبت‌شده و فاکتورهای قبلی حفظ می‌شوند.")) return;
+    setExamActionError(""); setExamActionBusy(true);
+    try { await api.post(`/school/exam-plans/${plan.id}/restore`, {}); await examPlans.reload(); }
+    catch (reason) { setExamActionError(reason instanceof Error ? reason.message : "بازیابی قیمت ناموفق بود."); }
+    finally { setExamActionBusy(false); }
+  }
   const discounts = useAsync(
     () =>
       can("school:manage")
@@ -83,7 +111,22 @@ export function CoursesPage() {
         : Promise.resolve([]),
     [can],
   );
-  const supports = useAsync(() => api.get<SpecialSupport[]>("/school/special-supports"), []);
+  const supports = useAsync(() => api.get<SpecialSupport[]>(`/school/special-supports${deletedQuery}`), [deletedQuery]);
+  function catalogButton(kind: "courses" | "special-supports" | "exam-plans", item: { id: string; is_deleted?: boolean }, name: string) {
+    return <button className={`button button--small ${item.is_deleted ? "button--secondary" : "button--danger"}`} disabled={catalogBusy} onClick={() => setCatalogAction({ kind, id: item.id, name, restore: !!item.is_deleted })}>{item.is_deleted ? "بازیابی" : "حذف"}</button>;
+  }
+  async function confirmCatalogAction() {
+    if (!catalogAction || catalogBusy) return;
+    setCatalogBusy(true); setCatalogError("");
+    try {
+      const base = `/school/catalog/${catalogAction.kind}/${catalogAction.id}`;
+      if (catalogAction.restore) await api.post(`${base}/restore`);
+      else await request(base, { method: "DELETE" });
+      setCatalogAction(null);
+      await Promise.all([courses.reload(), supports.reload(), examPlans.reload()]);
+    } catch (failure) { setCatalogError(failure instanceof Error ? failure.message : "تغییر فهرست ناموفق بود."); }
+    finally { setCatalogBusy(false); }
+  }
   return (
     <>
       <PageHeader
@@ -120,50 +163,34 @@ export function CoursesPage() {
           )
         }
       />
+      {can("school:manage") && <label className="check"><input type="checkbox" checked={showDeleted} onChange={(event) => setShowDeleted(event.target.checked)} /> نمایش موارد حذف‌شده برای بازیابی</label>}
+      {catalogError && <div className="alert alert--error" role="alert">{catalogError}</div>}
+      <Confirm open={!!catalogAction} title={catalogAction?.restore ? "بازیابی مورد حذف‌شده" : "حذف از فهرست"} message={catalogError || (catalogAction?.restore ? `«${catalogAction.name}» به فهرست بازگردانده شود؟` : `«${catalogAction?.name ?? ""}» از فهرست و انتخاب‌های ثبت‌نام حذف شود؟ پرونده‌ها، فاکتورها و پرداخت‌های قبلی دانش‌آموزان حفظ می‌شوند. برای آزمون، همه نسخه‌های قیمت همین طرح در همین بازه حذف می‌شوند. این عمل قابل بازیابی است.`)} confirmLabel={catalogAction?.restore ? "بازیابی" : "تأیید حذف"} busy={catalogBusy} onConfirm={() => void confirmCatalogAction()} onClose={() => { if (!catalogBusy) setCatalogAction(null); }} />
       {courses.loading ? (
         <LoadingState />
       ) : courses.error ? (
         <ErrorState message={courses.error} retry={courses.reload} />
       ) : courses.data?.length ? (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>کلاس</th>
-                <th>پایه</th>
-                <th>شهریه</th>
-                <th>وضعیت</th>
-                {can("school:manage") && <th>عملیات</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {courses.data.map((course) => (
-                <tr key={course.id}>
-                  <td>{course.name}</td>
-                  <td>{gradeName(course.grade)}</td>
-                  <td>
-                    <Money value={course.price} />
-                  </td>
-                  <td>
-                    <StatusBadge
-                      value={course.is_active ? "ACTIVE" : "INACTIVE"}
-                    />
-                  </td>
-                  {can("school:manage") && (
-                    <td>
-                      <button
-                        className="button button--secondary button--small"
-                        onClick={() => setEditingCourse(course)}
-                      >
-                        ویرایش
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <section className="card">
+          <h2 className="card-title">کلاس‌ها به تفکیک پایه</h2>
+          <Field label="پایه کلاس‌ها"><select value={classGradeFilter} onChange={(event) => setClassGradeFilter(event.target.value)}><option value="">همه پایه‌ها</option>{grades.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
+          {grades.filter(([key]) => !classGradeFilter || classGradeFilter === key).map(([key, label]) => {
+            const gradeCourses = courses.data?.filter((course) => course.grade === key) ?? [];
+            if (!gradeCourses.length) return classGradeFilter ? <p key={key} className="muted">برای این پایه هنوز کلاسی تعریف نشده است.</p> : null;
+            return <details key={key} open>
+              <summary>{label} · {gradeCourses.length} کلاس</summary>
+              <div className="table-wrap"><table>
+                <thead><tr><th>کلاس</th><th>دبیر</th><th>شهریه</th><th>وضعیت</th>{can("school:manage") && <th>عملیات</th>}</tr></thead>
+                <tbody>{gradeCourses.map((course) => <tr key={course.id}>
+                  <td>{course.name}</td><td>{course.instructor_name || "—"}</td>
+                  <td><Money value={course.price} /></td>
+                  <td>{course.is_deleted ? "حذف‌شده" : <StatusBadge value={course.is_active ? "ACTIVE" : "INACTIVE"} />}</td>
+                  {can("school:manage") && <td><div className="button-row">{!course.is_deleted && <button className="button button--secondary button--small" onClick={() => setEditingCourse(course)}>ویرایش</button>}{catalogButton("courses", course, course.name)}</div></td>}
+                </tr>)}</tbody>
+              </table></div>
+            </details>;
+          })}
+        </section>
       ) : (
         <EmptyState
           title="هنوز کلاسی تعریف نشده است"
@@ -195,15 +222,16 @@ export function CoursesPage() {
                     <td>{support.name}</td>
                     <td><Money value={support.monthly_price} /></td>
                     <td><Money value={support.seasonal_price} /></td>
-                    <td><StatusBadge value={support.is_active ? "ACTIVE" : "INACTIVE"} /></td>
+                    <td>{support.is_deleted ? "حذف‌شده" : <StatusBadge value={support.is_active ? "ACTIVE" : "INACTIVE"} />}</td>
                     {can("school:manage") && (
                       <td>
-                        <button
+                        {!support.is_deleted && <button
                           className="button button--secondary button--small"
                           onClick={() => setEditingSupport(support)}
                         >
                           ویرایش قیمت
-                        </button>
+                        </button>}
+                        {catalogButton("special-supports", support, support.name)}
                       </td>
                     )}
                   </tr>
@@ -221,7 +249,21 @@ export function CoursesPage() {
       <section className="card">
         <h2 className="card-title">طرح‌های آزمون و بن کتاب</h2>
         <p className="form-description">کاتالوگ قیمت بر اساس پایه و رشته دانش‌آموز است. مسئول ثبت‌نام فقط طرح مناسب را انتخاب می‌کند و امکان تغییر مبلغ ندارد.</p>
-        {examPlans.loading ? <LoadingState /> : examPlans.error ? <ErrorState message={examPlans.error} retry={examPlans.reload} /> : <div className="table-wrap"><table><thead><tr><th>پایه / رشته</th><th>طرح</th><th>تعداد آزمون</th><th>هر آزمون</th><th>مبلغ آزمون</th><th>بن کتاب</th><th>تخفیف بن</th><th>وضعیت</th>{can("school:manage") && <th>عملیات</th>}</tr></thead><tbody>{examPlans.data?.map((plan) => <tr key={plan.id}><td>{gradeName(plan.grade)}{plan.academic_track ? ` · ${academicTrackLabels[plan.academic_track] ?? plan.academic_track}` : ""}</td><td dir="ltr">{plan.plan_code}</td><td>{plan.exam_count}</td><td><Money value={plan.exam_unit_price} /></td><td><Money value={plan.exam_total} /></td><td><Money value={plan.book_voucher_amount} /></td><td><Money value={plan.book_voucher_discount} /></td><td><StatusBadge value={plan.is_active ? "ACTIVE" : "INACTIVE"} /></td>{can("school:manage") && <td><button className="button button--secondary button--small" onClick={() => setEditingExamPlan(plan)}>ویرایش</button></td>}</tr>)}</tbody></table></div>}
+        <p className="muted">قیمت‌ها براساس بازه تاریخ و پایه دسته‌بندی شده‌اند. هر ویرایش یک نسخه جدید می‌سازد و قیمت قبلی در سابقه باقی می‌ماند.</p>
+        {can("school:manage") && <button className="button button--secondary" onClick={() => setNewExamPeriod(true)}>بازه قیمت جدید</button>}
+        <div className="form-grid form-grid--2">
+          <Field label="بازه قیمت آزمون"><select value={examPeriodFilter} onChange={(event) => setExamPeriodFilter(event.target.value)}><option value="current">بازه جاری براساس تاریخ امروز</option><option value="all">همه بازه‌ها</option>{(examPeriods.data ?? []).map((period) => <option key={period.id} value={period.id}>{examPeriodLabel(period)}</option>)}<option value="legacy">تعرفه‌های قبلی بدون تاریخ</option></select></Field>
+          <Field label="فیلتر پایه"><select value={examGradeFilter} onChange={(event) => setExamGradeFilter(event.target.value)}><option value="">همه پایه‌ها</option>{grades.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
+        </div>
+        {can("school:manage") && <label className="check"><input type="checkbox" checked={showExamHistory} onChange={(event) => setShowExamHistory(event.target.checked)} /> نمایش نسخه‌های قبلی قیمت‌ها</label>}
+        {examActionError && <p className="alert alert--error">{examActionError}</p>}
+        {examPlans.loading || examPeriods.loading ? <LoadingState /> : examPlans.error || examPeriods.error ? <ErrorState message={examPlans.error ?? examPeriods.error ?? "دریافت تعرفه‌ها ناموفق بود."} retry={() => { void examPlans.reload(); void examPeriods.reload(); }} /> : <>
+          {!periodGroups.length && <p className="alert">برای تاریخ امروز بازه‌ای تعریف نشده است. یکی از بازه‌های دیگر را انتخاب کنید.</p>}
+          {periodGroups.map((period) => {
+            const plans = (examPlans.data ?? []).filter((plan) => (plan.pricing_period_id ?? "legacy") === period.id && (!examGradeFilter || plan.grade === examGradeFilter) && (plan.is_current || (can("school:manage") && showExamHistory)));
+            return <section key={period.id}><h3>{period.label}</h3>{!plans.length ? <p className="muted">طرحی برای این بازه و پایه ثبت نشده است.</p> : grades.filter(([key]) => plans.some((plan) => plan.grade === key)).map(([gradeKey, label]) => <details key={gradeKey} open><summary>{label} · {plans.filter((plan) => plan.grade === gradeKey).length} تعرفه</summary><div className="table-wrap"><table><thead><tr><th>رشته</th><th>کد طرح / نسخه</th><th>تعداد آزمون</th><th>هر آزمون</th><th>مبلغ آزمون</th><th>بن کتاب</th><th>تخفیف بن</th><th>وضعیت</th>{can("school:manage") && <th>عملیات</th>}</tr></thead><tbody>{plans.filter((plan) => plan.grade === gradeKey).map((plan) => <tr key={plan.id}><td>{academicTrackLabels[plan.academic_track ?? ""] ?? "بدون رشته"}</td><td>{plan.plan_code} · نسخه {plan.revision}</td><td>{plan.exam_count}</td><td><Money value={plan.exam_unit_price} /></td><td><Money value={plan.exam_total} /></td><td><Money value={plan.book_voucher_amount} /></td><td><Money value={plan.book_voucher_discount} /></td><td>{plan.is_deleted ? "حذف‌شده" : plan.is_current ? <StatusBadge value={plan.is_active ? "ACTIVE" : "INACTIVE"} /> : "نسخه قبلی"}</td>{can("school:manage") && <td><div className="button-row">{!plan.is_deleted && (plan.is_current ? <button className="button button--secondary button--small" onClick={() => setEditingExamPlan(plan)}>ویرایش قیمت</button> : <button className="button button--secondary button--small" disabled={examActionBusy} onClick={() => void restoreExamPlan(plan)}>استفاده مجدد از قیمت</button>)}{!plan.is_deleted && <button className="button button--secondary button--small" onClick={() => setCopyingExamPlan(plan)}>طرح جدید از این قیمت</button>}{catalogButton("exam-plans", plan, `طرح ${plan.plan_code} · ${gradeName(plan.grade)}`)}</div></td>}</tr>)}</tbody></table></div></details>)}</section>;
+          })}
+        </>}
       </section>
       {can("school:manage") && (
         <section className="card">
@@ -285,6 +327,7 @@ export function CoursesPage() {
       {editingExamPlan && (
         <ExamPlanForm
           plan={editingExamPlan}
+          periods={examPeriods.data ?? []}
           close={() => setEditingExamPlan(null)}
           saved={() => {
             setEditingExamPlan(null);
@@ -294,6 +337,7 @@ export function CoursesPage() {
       )}
       {newExamPlan && (
         <ExamPlanForm
+          periods={examPeriods.data ?? []}
           close={() => setNewExamPlan(false)}
           saved={() => {
             setNewExamPlan(false);
@@ -301,6 +345,8 @@ export function CoursesPage() {
           }}
         />
       )}
+      {copyingExamPlan && <ExamPlanForm template={copyingExamPlan} periods={examPeriods.data ?? []} close={() => setCopyingExamPlan(null)} saved={() => { setCopyingExamPlan(null); void examPlans.reload(); }} />}
+      {newExamPeriod && <ExamPricingPeriodForm close={() => setNewExamPeriod(false)} saved={(period) => { setNewExamPeriod(false); setExamPeriodFilter(period.id); void examPeriods.reload(); }} />}
       {(supportOpen || editingSupport) && (
         <SpecialSupportForm
           support={editingSupport ?? undefined}
@@ -459,19 +505,25 @@ function SpecialSupportForm({
 
 function ExamPlanForm({
   plan,
+  template,
+  periods,
   close,
   saved,
 }: {
   plan?: ExamPlan;
+  template?: ExamPlan;
+  periods: ExamPricingPeriod[];
   close: () => void;
   saved: () => void;
 }) {
-  const [grade, setGrade] = useState<string>(plan?.grade ?? "");
-  const [track, setTrack] = useState(plan?.academic_track ?? "");
-  const [unitPrice, setUnitPrice] = useState(String(plan?.exam_unit_price ?? ""));
-  const [examTotal, setExamTotal] = useState(String(plan?.exam_total ?? ""));
-  const [voucherAmount, setVoucherAmount] = useState(String(plan?.book_voucher_amount ?? ""));
-  const [voucherDiscount, setVoucherDiscount] = useState(String(plan?.book_voucher_discount ?? ""));
+  const source = plan ?? template;
+  const [grade, setGrade] = useState<string>(source?.grade ?? "");
+  const [track, setTrack] = useState(source?.academic_track ?? "");
+  const [periodId, setPeriodId] = useState(plan ? plan.pricing_period_id ?? "legacy" : currentExamPeriod(periods, todayIso())?.id ?? "");
+  const [unitPrice, setUnitPrice] = useState(String(source?.exam_unit_price ?? ""));
+  const [examTotal, setExamTotal] = useState(String(source?.exam_total ?? ""));
+  const [voucherAmount, setVoucherAmount] = useState(String(source?.book_voucher_amount ?? ""));
+  const [voucherDiscount, setVoucherDiscount] = useState(String(source?.book_voucher_discount ?? ""));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -484,7 +536,9 @@ function ExamPlanForm({
       const data = {
         grade,
         academic_track: track || null,
-        plan_code: String(form.get("plan_code")),
+        plan_code: plan?.plan_code ?? String(form.get("plan_code")),
+        pricing_period_id: periodId === "legacy" ? null : periodId,
+        expected_revision: plan?.revision ?? null,
         exam_count: Number(form.get("exam_count")),
         exam_unit_price: unitPrice || "0",
         exam_total: examTotal || "0",
@@ -507,19 +561,22 @@ function ExamPlanForm({
       <form className="form" onSubmit={submit}>
         {error && <p className="alert alert--error">{error}</p>}
         <p className="form-description">{plan ? "این تغییر فقط برای ثبت‌نام‌های جدید اعمال می‌شود؛ مبالغ ثبت‌شده در پرونده دانش‌آموزان قبلی تغییر نمی‌کند." : "پس از ثبت، مسئول ثبت‌نام فقط می‌تواند این طرح و مبلغ‌های مدیر تعیین‌شده را برای دانش‌آموز انتخاب کند."}</p>
+        <Field label="بازه تاریخ اعتبار قیمت"><select required disabled={!!plan} value={periodId} onChange={(event) => setPeriodId(event.target.value)}><option value="">انتخاب بازه قیمت</option>{periods.map((period) => <option key={period.id} value={period.id}>{examPeriodLabel(period)}</option>)}{plan && !plan.pricing_period_id && <option value="legacy">تعرفه قبلی بدون بازه</option>}</select></Field>
+        {!plan && <p className="muted">برای تاریخ‌های جدید ابتدا دکمه «بازه قیمت جدید» را در فهرست تعرفه‌ها انتخاب کنید.</p>}
+        {template && <p className="alert">مقادیر از قیمت قبلی کپی شده‌اند. بازه یا کد جدید را انتخاب کنید؛ قیمت قبلی حفظ می‌شود.</p>}
         <div className="form-grid">
-          <GradeField value={grade} onChange={setGrade} />
+          {plan ? <p>پایه: {gradeName(grade)}</p> : <GradeField value={grade} onChange={setGrade} />}
           <Field label="رشته تحصیلی">
-            <select value={track} onChange={(event) => setTrack(event.target.value)}>
+            <select disabled={!!plan} value={track} onChange={(event) => setTrack(event.target.value)}>
               <option value="">بدون رشته</option>
               {Object.entries(academicTrackLabels).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
             </select>
           </Field>
           <Field label="کد طرح">
-            <input name="plan_code" dir="ltr" defaultValue={plan?.plan_code} required />
+            <input name="plan_code" dir="ltr" defaultValue={source?.plan_code} readOnly={!!plan} required />
           </Field>
           <Field label="تعداد آزمون">
-            <input name="exam_count" type="number" min="1" defaultValue={plan?.exam_count ?? 1} required />
+            <input name="exam_count" type="number" min="1" defaultValue={source?.exam_count ?? 1} required />
           </Field>
         </div>
         <div className="form-grid form-grid--2">
@@ -544,6 +601,27 @@ function ExamPlanForm({
       </form>
     </Modal>
   );
+}
+
+function ExamPricingPeriodForm({ close, saved }: { close: () => void; saved: (period: ExamPricingPeriod) => void }) {
+  const [name, setName] = useState(""); const [start, setStart] = useState(""); const [end, setEnd] = useState("");
+  const [busy, setBusy] = useState(false); const [error, setError] = useState("");
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); setError("");
+    if ((!start && !end) || (start && end && start > end)) { setError("حداقل یک تاریخ معتبر انتخاب کنید؛ پایان نباید قبل از شروع باشد."); return; }
+    setBusy(true);
+    try { saved(await api.post<ExamPricingPeriod>("/school/exam-pricing-periods", { name, starts_on: start || null, ends_on: end || null })); }
+    catch (failure) { setError(failure instanceof Error ? failure.message : "ثبت بازه ناموفق بود."); }
+    finally { setBusy(false); }
+  }
+  return <Modal open title="بازه قیمت جدید آزمون‌ها" onClose={close}><form className="form" onSubmit={(event) => void submit(event)}>
+    {error && <p className="alert alert--error">{error}</p>}
+    <Field label="نام بازه"><input required maxLength={200} value={name} onChange={(event) => setName(event.target.value)} placeholder="مثلاً تعرفه پاییز ۱۴۰۵" /></Field>
+    <DateField label="قیمت از تاریخ (اختیاری)" value={start} onChange={setStart} />
+    <DateField label="قیمت تا تاریخ (اختیاری)" value={end} onChange={setEnd} />
+    <p className="muted">حداقل یک تاریخ انتخاب کنید. پایان خالی یعنی قیمت از تاریخ شروع به بعد قابل انتخاب است. بازه‌های قبلی نیز برای استفاده مجدد باقی می‌مانند.</p>
+    <div className="form-actions"><button type="button" className="button button--secondary" onClick={close} disabled={busy}>انصراف</button><button className="button button--primary" disabled={busy}>{busy ? "در حال ذخیره…" : "ثبت بازه"}</button></div>
+  </form></Modal>;
 }
 
 function DiscountForm({
@@ -782,6 +860,7 @@ function FourSectionStudentRegistrationForm({
   const [bookIncluded, setBookIncluded] = useState(false);
   const [examIncluded, setExamIncluded] = useState(false);
   const [examPlanId, setExamPlanId] = useState("");
+  const [registrationExamPeriod, setRegistrationExamPeriod] = useState("current");
   const [supportId, setSupportId] = useState("");
   const [supportPeriod, setSupportPeriod] = useState<"MONTHLY" | "SEASONAL">("MONTHLY");
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
@@ -797,6 +876,10 @@ function FourSectionStudentRegistrationForm({
     () => api.get<SpecialSupport[]>("/school/special-supports"),
     [],
   );
+  const registrationPeriods = useAsync(() => api.get<ExamPricingPeriod[]>("/school/exam-pricing-periods"), []);
+  const selectedRegistrationPeriod = registrationExamPeriod === "current"
+    ? currentExamPeriod((registrationPeriods.data ?? []).filter((period) => (examPlans.data ?? []).some((plan) => plan.pricing_period_id === period.id && plan.grade === grade && plan.academic_track === (academicTrack || null) && plan.is_active && plan.is_current)), registrationDate)?.id
+    : registrationExamPeriod;
   const availableCourses = useMemo(
     () => courses.data?.filter((course) => course.grade === grade && course.is_active) ?? [],
     [courses.data, grade],
@@ -804,7 +887,7 @@ function FourSectionStudentRegistrationForm({
   const chosenCourses = availableCourses.filter((course) => selectedCourses.includes(course.id));
   const classTotal = chosenCourses.reduce((sum, course) => sum + Number(course.price), 0);
   const availableExamPlans = examPlans.data?.filter(
-    (plan) => plan.is_active && plan.grade === grade && plan.academic_track === (academicTrack || null),
+    (plan) => plan.is_active && plan.is_current !== false && (plan.pricing_period_id ?? "legacy") === selectedRegistrationPeriod && plan.grade === grade && plan.academic_track === (academicTrack || null),
   ) ?? [];
   const selectedExamPlan = availableExamPlans.find((plan) => plan.id === examPlanId);
   const bookPrice = bookIncluded && selectedExamPlan
@@ -836,6 +919,7 @@ function FourSectionStudentRegistrationForm({
     if (!String(form.get("national_id") ?? "").trim()) missing.push("کد ملی");
     if (!birthDate) missing.push("تاریخ تولد");
     if (!grade) missing.push("پایه تحصیلی");
+    if (selectedCourses.length !== chosenCourses.length) missing.push("انتخاب دوباره کلاس‌های فعال پایه دانش‌آموز");
     if (needsAcademicTrack && !academicTrack) missing.push("رشته تحصیلی");
     if ((examIncluded || bookIncluded) && !examPlanId) missing.push("طرح آزمون");
     if (!String(form.get("guardian_full_name") ?? "").trim()) missing.push("نام ولی");
@@ -870,7 +954,7 @@ function FourSectionStudentRegistrationForm({
         previous_school: form.get("previous_school") || null,
         emergency_contact: form.get("emergency_contact") || null,
         notes: form.get("notes") || null,
-        course_ids: selectedCourses,
+        course_ids: chosenCourses.map((course) => course.id),
         discount_code: form.get("discount_code") || null,
         payments,
       });
@@ -894,7 +978,7 @@ function FourSectionStudentRegistrationForm({
             <Field label="کد ملی"><input name="national_id" dir="ltr" required disabled={busy} /></Field>
             <Field label="تلفن دانش‌آموز (اختیاری)"><input name="student_phone" dir="ltr" disabled={busy} /></Field>
             <DateField label="تاریخ تولد" value={birthDate} onChange={setBirthDate} required />
-            <DateField label="تاریخ ثبت‌نام" value={registrationDate} onChange={setRegistrationDate} required />
+            <DateField label="تاریخ ثبت‌نام" value={registrationDate} onChange={(value) => { setRegistrationDate(value); setExamPlanId(""); }} required />
             <GradeField value={grade} onChange={(value) => { setGrade(value); setSelectedCourses([]); setAcademicTrack(""); setExamPlanId(""); }} />
             {needsAcademicTrack && <Field label="رشته تحصیلی"><select value={academicTrack} onChange={(event) => { setAcademicTrack(event.target.value); setExamPlanId(""); }} required disabled={busy}><option value="">انتخاب رشته</option>{Array.from(new Set((examPlans.data ?? []).filter((plan) => plan.grade === grade && plan.academic_track).map((plan) => plan.academic_track as string))).map((track) => <option key={track} value={track}>{academicTrackLabels[track] ?? track}</option>)}</select></Field>}
             <Field label="نام ولی"><input name="guardian_full_name" required disabled={busy} /></Field>
@@ -910,6 +994,8 @@ function FourSectionStudentRegistrationForm({
 
         <section className="card">
           <h2 className="card-title">۲. آزمون و کتاب</h2>
+          <Field label="بازه قیمت آزمون و بن کتاب"><select value={registrationExamPeriod} onChange={(event) => { setRegistrationExamPeriod(event.target.value); setExamPlanId(""); }} disabled={busy || registrationPeriods.loading}><option value="current">بازه مناسب پایه و تاریخ ثبت‌نام</option>{(registrationPeriods.data ?? []).map((period) => <option key={period.id} value={period.id}>{examPeriodLabel(period)}</option>)}<option value="legacy">تعرفه‌های قبلی بدون تاریخ</option></select></Field>
+          {registrationPeriods.error && <ErrorState message={registrationPeriods.error} retry={registrationPeriods.reload} />}
           {examPlans.loading ? <LoadingState /> : examPlans.error ? <ErrorState message={examPlans.error} retry={examPlans.reload} /> : <><Field label="طرح آزمون و بن کتاب"><select value={examPlanId} onChange={(event) => setExamPlanId(event.target.value)} disabled={busy || !grade || (needsAcademicTrack && !academicTrack)}><option value="">انتخاب طرح</option>{availableExamPlans.map((plan) => <option key={plan.id} value={plan.id}>طرح {plan.plan_code} · {plan.exam_count} آزمون · مبلغ آزمون {Number(plan.exam_total).toLocaleString("en-US")} ریال</option>)}</select></Field>{grade && !needsAcademicTrack && !availableExamPlans.length && <p className="alert alert--warning">برای این پایه طرح آزمون پیش‌فرض وجود ندارد.</p>}<div className="form-grid form-grid--2">
             <label className="course-choice"><input type="checkbox" checked={examIncluded} onChange={(event) => setExamIncluded(event.target.checked)} disabled={busy || !examPlanId} /><span><strong>ثبت‌نام آزمون</strong><small>مبلغ طرح انتخاب‌شده</small></span><Money value={examPrice} /></label>
             <label className="course-choice"><input type="checkbox" checked={bookIncluded} onChange={(event) => setBookIncluded(event.target.checked)} disabled={busy || !examPlanId} /><span><strong>شامل بن کتاب</strong><small>{selectedExamPlan ? `بن ${Number(selectedExamPlan.book_voucher_amount).toLocaleString("en-US")} − تخفیف ${Number(selectedExamPlan.book_voucher_discount).toLocaleString("en-US")}` : "ابتدا طرح را انتخاب کنید"}</small></span><Money value={bookPrice} /></label>
@@ -937,6 +1023,7 @@ function FourSectionStudentRegistrationForm({
 
         <section className="card">
           <h2 className="card-title">۳. کلاس‌ها</h2>
+          {grade && <p className="form-description">فقط کلاس‌های فعال {gradeName(grade)} قابل انتخاب هستند. با تغییر پایه، انتخاب کلاس‌های قبلی پاک می‌شود.</p>}
           {!grade ? <p className="form-description">ابتدا پایه تحصیلی دانش‌آموز را انتخاب کنید.</p> : courses.loading ? <LoadingState /> : availableCourses.length ? <div className="course-picker">{availableCourses.map((course) => <label key={course.id} className="course-choice"><input type="checkbox" checked={selectedCourses.includes(course.id)} onChange={() => toggleCourse(course.id)} disabled={busy} /><span><strong>{course.name}</strong>{course.instructor_name && <small>دبیر: {course.instructor_name}</small>}</span><Money value={course.price} /></label>)}</div> : <p className="alert alert--warning">برای این پایه، کلاسی توسط مدیر تعریف نشده است.</p>}
           <Field label="کد تخفیف (اختیاری)"><input name="discount_code" dir="ltr" placeholder="کد را وارد کنید" disabled={busy} /></Field>
           <div className="detail-grid"><p>جمع کلاس‌ها: <Money value={classTotal} /></p><p>آزمون: <Money value={examPrice} /></p><p>کتاب: <Money value={bookPrice} /></p><p>پشتیبان ویژه: <Money value={specialSupportPrice} /></p><p><strong>جمع فاکتور پیش از تخفیف: <Money value={total} /></strong></p></div>

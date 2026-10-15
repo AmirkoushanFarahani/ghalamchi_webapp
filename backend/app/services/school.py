@@ -2,7 +2,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import select, true
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -15,6 +15,7 @@ from backend.app.db.models import (
     EnrollmentServiceAttendance,
     EnrollmentServiceCancellation,
     EnrollmentSupportChange,
+    ExamPricingPeriod,
     Role,
     SchoolCost,
     SchoolCourse,
@@ -35,6 +36,7 @@ from backend.app.schemas.school import (
     DiscountCodeCreate,
     EnrollmentPaymentCreate,
     ExamPlanUpdate,
+    ExamPricingPeriodCreate,
     PaymentStatusUpdate,
     RefundAction,
     RegistrationFeesUpdate,
@@ -49,7 +51,7 @@ from backend.app.schemas.school import (
     StudentEnrollmentCreate,
     SupportChangeCreate,
 )
-from backend.app.services.school_exam_catalog import DEFAULT_EXAM_CATALOG, PLAN_CODES, decimal
+from backend.app.services.exam_pricing import install_exam_catalog
 
 
 class SchoolError(ValueError):
@@ -57,6 +59,10 @@ class SchoolError(ValueError):
 
 
 class SchoolConflictError(SchoolError):
+    pass
+
+
+class SchoolAccessError(PermissionError):
     pass
 
 
@@ -73,6 +79,22 @@ class SchoolService:
         self.school_institute_id = self._resolve_school_institute_id()
 
     def _resolve_school_institute_id(self) -> UUID:
+        if self.actor.school_manager_id is not None:
+            manager = self.session.get(User, self.actor.school_manager_id)
+            if manager is None or not manager.is_active:
+                raise SchoolAccessError("دسترسی آموزشگاه غیرفعال است.")
+            school = self.session.scalar(
+                select(SchoolInstitute).where(
+                    SchoolInstitute.id == self.actor.school_institute_id,
+                    SchoolInstitute.manager_id == self.workspace_owner_id,
+                    SchoolInstitute.is_active.is_(True),
+                )
+            )
+            if school is None:
+                raise SchoolAccessError("مدیر باید آموزشگاه فعال شما را مشخص کند.")
+            return school.id
+        if "EMPLOYEE" in self.actor.role_names:
+            raise SchoolAccessError("حساب منشی باید توسط مدیر به آموزشگاه متصل شود.")
         selected = self.actor.school_institute_id or self.actor.active_school_institute_id
         if selected is not None:
             school = self.session.scalar(
@@ -93,14 +115,9 @@ class SchoolService:
             .order_by(SchoolInstitute.created_at)
         )
         if school is None:
-            school = SchoolInstitute(manager_id=self.workspace_owner_id, name="آموزشگاه اول")
-            self.session.add(school)
-            self.session.flush()
-        if self.actor.school_manager_id is None:
-            self.actor.active_school_institute_id = school.id
-        else:
-            self.actor.school_institute_id = school.id
-        self.session.commit()
+            raise SchoolAccessError(
+                "آموزشگاه فعالی ندارید؛ دوباره وارد حساب شوید یا با مدیر تماس بگیرید."
+            )
         return school.id
 
     def _require_manager(self) -> None:
@@ -129,6 +146,8 @@ class SchoolService:
         school = SchoolInstitute(manager_id=self.workspace_owner_id, name=data.name)
         self.session.add(school)
         try:
+            self.session.flush()
+            install_exam_catalog(self.session, self.workspace_owner_id, school.id)
             self.session.commit()
         except IntegrityError as exc:
             self.session.rollback()
@@ -187,6 +206,7 @@ class SchoolService:
         if school is None or secretary is None:
             raise SchoolError("School or secretary was not found in this manager workspace")
         secretary.school_institute_id = school.id
+        secretary.session_version += 1
         self.session.commit()
         return school
 
@@ -274,6 +294,7 @@ class SchoolService:
         secretary.first_name = data.first_name
         secretary.last_name = data.last_name
         secretary.email = str(data.email).casefold()
+        secretary.session_version += 1
         AuditRepository(self.session).record(
             action="school.secretary.updated",
             resource_type="user",
@@ -292,6 +313,7 @@ class SchoolService:
     def set_secretary_status(self, school_id: UUID, secretary_id: UUID, is_active: bool) -> User:
         secretary = self._managed_secretary(school_id, secretary_id)
         secretary.is_active = is_active
+        secretary.session_version += 1
         AuditRepository(self.session).record(
             action="school.secretary.status_changed",
             resource_type="user",
@@ -308,6 +330,7 @@ class SchoolService:
     ) -> None:
         secretary = self._managed_secretary(school_id, secretary_id)
         secretary.password_hash = hash_password(data.password)
+        secretary.session_version += 1
         AuditRepository(self.session).record(
             action="school.secretary.credentials_reset",
             resource_type="user",
@@ -380,13 +403,17 @@ class SchoolService:
             )
         return result
 
-    def list_courses(self, grade: str | None = None) -> list[SchoolCourse]:
+    def list_courses(
+        self, grade: str | None = None, include_deleted: bool = False
+    ) -> list[SchoolCourse]:
         query = select(SchoolCourse).where(
             SchoolCourse.workspace_owner_id == self.workspace_owner_id,
             SchoolCourse.school_institute_id == self.school_institute_id,
         )
         if grade is not None:
             query = query.where(SchoolCourse.grade == grade)
+        if not include_deleted:
+            query = query.where(SchoolCourse.is_deleted.is_(False))
         return list(self.session.scalars(query.order_by(SchoolCourse.grade, SchoolCourse.name)))
 
     def create_course(self, data: CourseCreate) -> SchoolCourse:
@@ -413,7 +440,7 @@ class SchoolService:
                 SchoolCourse.school_institute_id == self.school_institute_id,
             )
         )
-        if course is None:
+        if course is None or course.is_deleted:
             raise SchoolError("Course was not found")
 
         for field, value in data.model_dump().items():
@@ -482,25 +509,94 @@ class SchoolService:
         self.session.commit()
         return fees
 
-    def list_exam_plans(self, grade: str | None = None) -> list[SchoolExamPlan]:
-        self._ensure_default_exam_plans()
+    def list_exam_plans(
+        self, grade: str | None = None, include_deleted: bool = False
+    ) -> list[SchoolExamPlan]:
         query = select(SchoolExamPlan).where(
             SchoolExamPlan.workspace_owner_id == self.workspace_owner_id,
             SchoolExamPlan.school_institute_id == self.school_institute_id,
         )
         if grade is not None:
             query = query.where(SchoolExamPlan.grade == grade)
+        if not include_deleted:
+            query = query.where(SchoolExamPlan.is_deleted.is_(False))
         return list(
             self.session.scalars(
                 query.order_by(
                     SchoolExamPlan.grade,
                     SchoolExamPlan.academic_track,
                     SchoolExamPlan.plan_code,
+                    SchoolExamPlan.revision.desc(),
                 )
             )
         )
 
+    def list_exam_pricing_periods(self) -> list[ExamPricingPeriod]:
+        return list(
+            self.session.scalars(
+                select(ExamPricingPeriod)
+                .where(
+                    ExamPricingPeriod.workspace_owner_id == self.workspace_owner_id,
+                    ExamPricingPeriod.school_institute_id == self.school_institute_id,
+                )
+                .order_by(
+                    ExamPricingPeriod.starts_on, ExamPricingPeriod.ends_on, ExamPricingPeriod.name
+                )
+            )
+        )
+
+    def create_exam_pricing_period(self, data: ExamPricingPeriodCreate) -> ExamPricingPeriod:
+        self._require_manager()
+        period = ExamPricingPeriod(
+            workspace_owner_id=self.workspace_owner_id,
+            school_institute_id=self.school_institute_id,
+            **data.model_dump(),
+        )
+        self.session.add(period)
+        try:
+            self.session.commit()
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise SchoolConflictError(
+                "یک بازه با این نام قبلاً در این آموزشگاه ثبت شده است."
+            ) from exc
+        return period
+
+    def _lock_exam_catalog(self, data: ExamPlanUpdate) -> None:
+        self._require_manager()
+        self.session.scalar(
+            select(SchoolInstitute)
+            .where(
+                SchoolInstitute.id == self.school_institute_id,
+            )
+            .with_for_update()
+        )
+        if data.pricing_period_id is not None:
+            period = self.session.scalar(
+                select(ExamPricingPeriod).where(
+                    ExamPricingPeriod.id == data.pricing_period_id,
+                    ExamPricingPeriod.school_institute_id == self.school_institute_id,
+                    ExamPricingPeriod.workspace_owner_id == self.workspace_owner_id,
+                )
+            )
+            if period is None:
+                raise SchoolError("بازه قیمت انتخاب‌شده متعلق به این آموزشگاه نیست.")
+
+    def _current_exam_plan(self, data: ExamPlanUpdate) -> SchoolExamPlan | None:
+        return self.session.scalar(
+            select(SchoolExamPlan).where(
+                SchoolExamPlan.workspace_owner_id == self.workspace_owner_id,
+                SchoolExamPlan.school_institute_id == self.school_institute_id,
+                SchoolExamPlan.grade == data.grade,
+                SchoolExamPlan.academic_track == data.academic_track,
+                SchoolExamPlan.plan_code == data.plan_code,
+                SchoolExamPlan.pricing_period_id == data.pricing_period_id,
+                SchoolExamPlan.is_current.is_(True),
+            )
+        )
+
     def update_exam_plan(self, plan_id: UUID, data: ExamPlanUpdate) -> SchoolExamPlan:
+        self._lock_exam_catalog(data)
         plan = self.session.scalar(
             select(SchoolExamPlan).where(
                 SchoolExamPlan.id == plan_id,
@@ -508,11 +604,45 @@ class SchoolService:
                 SchoolExamPlan.school_institute_id == self.school_institute_id,
             )
         )
-        if plan is None:
+        if plan is None or plan.is_deleted:
             raise SchoolError("Exam plan was not found")
-
-        for field, value in data.model_dump().items():
-            setattr(plan, field, value)
+        if "pricing_period_id" not in data.model_fields_set:
+            data = data.model_copy(update={"pricing_period_id": plan.pricing_period_id})
+        if not plan.is_current or (
+            data.expected_revision is not None and plan.revision != data.expected_revision
+        ):
+            raise SchoolConflictError("قیمت قبلاً تغییر کرده است؛ صفحه را تازه‌سازی کنید.")
+        # An existing price group has a stable identity. Another period/grade is
+        # a new plan, so a price revision cannot move or erase its history.
+        if (data.grade, data.academic_track, data.plan_code, data.pricing_period_id) != (
+            plan.grade,
+            plan.academic_track,
+            plan.plan_code,
+            plan.pricing_period_id,
+        ):
+            raise SchoolError(
+                "برای تغییر پایه، کد یا بازه، از «طرح جدید از این قیمت» استفاده کنید."
+            )
+        plan.is_current = False
+        replacement = SchoolExamPlan(
+            workspace_owner_id=self.workspace_owner_id,
+            school_institute_id=self.school_institute_id,
+            revision=plan.revision + 1,
+            **data.model_dump(exclude={"expected_revision"}),
+        )
+        self.session.add(replacement)
+        AuditRepository(self.session).record(
+            action="school.exam_price.revised",
+            resource_type="school_exam_plan",
+            resource_id=str(plan.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={
+                "old_total": str(plan.exam_total),
+                "new_total": str(data.exam_total),
+                "revision": replacement.revision,
+            },
+        )
         try:
             self.session.commit()
         except IntegrityError as exc:
@@ -520,13 +650,18 @@ class SchoolService:
             raise SchoolConflictError(
                 "An exam plan with this grade, major, and plan code already exists"
             ) from exc
-        return plan
+        return replacement
 
     def create_exam_plan(self, data: ExamPlanUpdate) -> SchoolExamPlan:
+        self._lock_exam_catalog(data)
+        if self._current_exam_plan(data) is not None:
+            raise SchoolConflictError(
+                "برای این پایه، رشته، کد و بازه قبلاً تعرفه ثبت شده است؛ آن را ویرایش کنید."
+            )
         plan = SchoolExamPlan(
             workspace_owner_id=self.workspace_owner_id,
             school_institute_id=self.school_institute_id,
-            **data.model_dump(),
+            **data.model_dump(exclude={"expected_revision"}),
         )
         self.session.add(plan)
         try:
@@ -538,13 +673,44 @@ class SchoolService:
             ) from exc
         return plan
 
-    def list_special_supports(self) -> list[SchoolSpecialSupport]:
+    def restore_exam_plan(self, plan_id: UUID) -> SchoolExamPlan:
+        self._require_manager()
+        self.session.scalar(
+            select(SchoolInstitute)
+            .where(
+                SchoolInstitute.id == self.school_institute_id,
+            )
+            .with_for_update()
+        )
+        old = self.session.scalar(
+            select(SchoolExamPlan).where(
+                SchoolExamPlan.id == plan_id,
+                SchoolExamPlan.workspace_owner_id == self.workspace_owner_id,
+                SchoolExamPlan.school_institute_id == self.school_institute_id,
+            )
+        )
+        if old is None or old.is_deleted:
+            raise SchoolError("تعرفه قبلی پیدا نشد.")
+        data = ExamPlanUpdate(
+            **{
+                field: getattr(old, field)
+                for field in ExamPlanUpdate.model_fields
+                if field != "expected_revision"
+            }
+        ).model_copy(update={"is_active": True})
+        current = self._current_exam_plan(data)
+        if current is None:
+            raise SchoolConflictError("نسخه فعلی این طرح پیدا نشد.")
+        return self.update_exam_plan(current.id, data)
+
+    def list_special_supports(self, include_deleted: bool = False) -> list[SchoolSpecialSupport]:
         return list(
             self.session.scalars(
                 select(SchoolSpecialSupport)
                 .where(
                     SchoolSpecialSupport.workspace_owner_id == self.workspace_owner_id,
                     SchoolSpecialSupport.school_institute_id == self.school_institute_id,
+                    (SchoolSpecialSupport.is_deleted.is_(False) if not include_deleted else true()),
                 )
                 .order_by(SchoolSpecialSupport.name)
             )
@@ -578,7 +744,7 @@ class SchoolService:
                 SchoolSpecialSupport.school_institute_id == self.school_institute_id,
             )
         )
-        if support is None:
+        if support is None or support.is_deleted:
             raise SchoolError("Special support was not found")
         for field, value in data.model_dump().items():
             setattr(support, field, value)
@@ -588,6 +754,61 @@ class SchoolService:
             self.session.rollback()
             raise SchoolConflictError("A special support with this name already exists") from exc
         return support
+
+    def set_catalog_deleted(self, kind: str, item_id: UUID, deleted: bool) -> None:
+        self._require_manager()
+        # Serialize exam revisions and deletion against the same school lock.
+        self.session.scalar(
+            select(SchoolInstitute)
+            .where(
+                SchoolInstitute.id == self.school_institute_id,
+            )
+            .with_for_update()
+        )
+        models: dict[
+            str, type[SchoolCourse] | type[SchoolSpecialSupport] | type[SchoolExamPlan]
+        ] = {
+            "courses": SchoolCourse,
+            "special-supports": SchoolSpecialSupport,
+            "exam-plans": SchoolExamPlan,
+        }
+        model = models[kind]
+        item = self.session.scalar(
+            select(model)
+            .where(
+                model.id == item_id,
+                model.workspace_owner_id == self.workspace_owner_id,
+                model.school_institute_id == self.school_institute_id,
+            )
+            .with_for_update()
+        )
+        if not isinstance(item, (SchoolCourse, SchoolSpecialSupport, SchoolExamPlan)):
+            raise SchoolError("مورد انتخاب‌شده در این آموزشگاه پیدا نشد.")
+        if isinstance(item, SchoolExamPlan):
+            # Remove/restore a plan with its entire saved price history.
+            versions = self.session.scalars(
+                select(SchoolExamPlan).where(
+                    SchoolExamPlan.workspace_owner_id == self.workspace_owner_id,
+                    SchoolExamPlan.school_institute_id == self.school_institute_id,
+                    SchoolExamPlan.pricing_period_id == item.pricing_period_id,
+                    SchoolExamPlan.grade == item.grade,
+                    SchoolExamPlan.academic_track == item.academic_track,
+                    SchoolExamPlan.plan_code == item.plan_code,
+                )
+            )
+            for version in versions:
+                version.is_deleted = deleted
+        else:
+            item.is_deleted = deleted
+        AuditRepository(self.session).record(
+            action="school.catalog.deleted" if deleted else "school.catalog.restored",
+            resource_type=model.__tablename__,
+            resource_id=str(item.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={"kind": kind},
+        )
+        self.session.commit()
 
     def list_students(self) -> list[Student]:
         students = list(
@@ -664,6 +885,7 @@ class SchoolService:
                         SchoolCourse.school_institute_id == self.school_institute_id,
                         SchoolCourse.id.in_(course_ids),
                         SchoolCourse.is_active.is_(True),
+                        SchoolCourse.is_deleted.is_(False),
                     )
                 )
             )
@@ -806,25 +1028,8 @@ class SchoolService:
         )
         if exists is not None:
             return
-        plans: list[SchoolExamPlan] = []
-        for grade, track, book_amount, book_discount, price_sets in DEFAULT_EXAM_CATALOG:
-            for code, (count, unit_price, total) in zip(PLAN_CODES, price_sets, strict=True):
-                plans.append(
-                    SchoolExamPlan(
-                        workspace_owner_id=self.workspace_owner_id,
-                        school_institute_id=self.school_institute_id,
-                        grade=grade,
-                        academic_track=track,
-                        plan_code=code,
-                        exam_count=count,
-                        exam_unit_price=decimal(unit_price),
-                        exam_total=decimal(total),
-                        book_voucher_amount=decimal(book_amount),
-                        book_voucher_discount=decimal(book_discount),
-                    )
-                )
-        self.session.add_all(plans)
         try:
+            install_exam_catalog(self.session, self.workspace_owner_id, self.school_institute_id)
             self.session.commit()
         except IntegrityError:
             self.session.rollback()
@@ -841,6 +1046,8 @@ class SchoolService:
                 SchoolExamPlan.workspace_owner_id == self.workspace_owner_id,
                 SchoolExamPlan.school_institute_id == self.school_institute_id,
                 SchoolExamPlan.is_active.is_(True),
+                SchoolExamPlan.is_current.is_(True),
+                SchoolExamPlan.is_deleted.is_(False),
             )
         )
         if plan is None:
@@ -862,6 +1069,7 @@ class SchoolService:
                 SchoolSpecialSupport.workspace_owner_id == self.workspace_owner_id,
                 SchoolSpecialSupport.school_institute_id == self.school_institute_id,
                 SchoolSpecialSupport.is_active.is_(True),
+                SchoolSpecialSupport.is_deleted.is_(False),
             )
         )
         if support is None:
@@ -960,6 +1168,7 @@ class SchoolService:
                 SchoolCourse.workspace_owner_id == self.workspace_owner_id,
                 SchoolCourse.school_institute_id == self.school_institute_id,
                 SchoolCourse.is_active.is_(True),
+                SchoolCourse.is_deleted.is_(False),
             )
             .with_for_update()
         )
@@ -1044,7 +1253,8 @@ class SchoolService:
     ) -> Student:
         enrollment = self._locked_enrollment(student_id, enrollment_id)
         if data.service_type == "COURSE":
-            assert data.course_id is not None
+            if data.course_id is None:
+                raise SchoolError("کلاس را انتخاب کنید.")
             course = next(
                 (
                     row
@@ -1107,7 +1317,8 @@ class SchoolService:
         original_price: Decimal
         total_sessions = 0
         if data.service_type == "COURSE":
-            assert data.course_id is not None
+            if data.course_id is None:
+                raise SchoolError("کلاس را انتخاب کنید.")
             course = next(
                 (
                     row
@@ -1195,7 +1406,8 @@ class SchoolService:
             new_total,
         )
         if data.service_type == "COURSE":
-            assert data.course_id is not None
+            if data.course_id is None:
+                raise SchoolError("کلاس را انتخاب کنید.")
             next(
                 row for row in enrollment.courses if row.course_id == data.course_id
             ).status = "CANCELLED"
@@ -1262,6 +1474,7 @@ class SchoolService:
                 SchoolSpecialSupport.workspace_owner_id == self.workspace_owner_id,
                 SchoolSpecialSupport.school_institute_id == self.school_institute_id,
                 SchoolSpecialSupport.is_active.is_(True),
+                SchoolSpecialSupport.is_deleted.is_(False),
             )
             .with_for_update()
         )
@@ -1410,7 +1623,8 @@ class SchoolService:
                 StudentEnrollment.id == payment.enrollment_id
             )
         )
-        assert student_id is not None
+        if student_id is None:
+            raise SchoolError("Student was not found")
         enrollment = self._locked_enrollment(student_id, payment.enrollment_id)
         # Read again after the enrollment lock; class changes and all payments share this lock.
         payment = next(row for row in enrollment.payments if row.id == payment_id)

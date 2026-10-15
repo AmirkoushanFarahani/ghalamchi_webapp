@@ -7,11 +7,12 @@ export interface SchoolInstitute { id: UUID; name: string; is_active: boolean; s
 export interface SchoolComparison { school_institute_id: UUID; school_name: string; student_count: number; registered_tuition: Money; received_tuition: Money; outstanding_tuition: Money; due_payments: Money; costs: Money; net_cash: Money }
 export interface TokenResponse { access_token: string; token_type: string }
 export type SchoolGrade = "GRADE_1" | "GRADE_2" | "GRADE_3" | "GRADE_4" | "GRADE_5" | "GRADE_6" | "GRADE_7" | "GRADE_8" | "GRADE_9" | "GRADE_10" | "GRADE_11" | "GRADE_12";
-export interface Course { id: UUID; name: string; instructor_name: string | null; grade: SchoolGrade; price: Money; session_count: number; is_active: boolean }
+export interface Course { id: UUID; name: string; instructor_name: string | null; grade: SchoolGrade; price: Money; session_count: number; is_active: boolean; is_deleted?: boolean }
 export interface DiscountCode { id: UUID; code: string; percentage: Money; expires_on: string | null; max_uses: number | null; uses_count: number; is_active: boolean }
 export interface RegistrationFees { book_price: Money; exam_price: Money }
-export interface ExamPlan { id: UUID; grade: SchoolGrade; academic_track: string | null; plan_code: string; exam_count: number; exam_unit_price: Money; exam_total: Money; book_voucher_amount: Money; book_voucher_discount: Money; is_active: boolean }
-export interface SpecialSupport { id: UUID; name: string; monthly_price: Money; seasonal_price: Money; is_active: boolean }
+export interface ExamPricingPeriod { id: UUID; name: string; starts_on: string | null; ends_on: string | null }
+export interface ExamPlan { id: UUID; grade: SchoolGrade; academic_track: string | null; plan_code: string; exam_count: number; exam_unit_price: Money; exam_total: Money; book_voucher_amount: Money; book_voucher_discount: Money; is_active: boolean; pricing_period_id: UUID | null; revision: number; is_current: boolean; is_deleted?: boolean }
+export interface SpecialSupport { id: UUID; name: string; monthly_price: Money; seasonal_price: Money; is_active: boolean; is_deleted?: boolean }
 export interface EnrollmentCourse { course_id: UUID; course_name: string; instructor_name?: string | null; price: Money; session_count: number; status: "ACTIVE" | "CANCELLED" }
 export interface EnrollmentPayment { id: UUID; amount: Money; method: "CASH" | "BANK_TRANSFER" | "CHECK" | "INSTALLMENT"; due_date: string | null; tracking_code: string | null; sayad_id: string | null; status: "PENDING" | "PAID" | "BOUNCED" | "CANCELLED"; created_at: string; updated_at: string }
 export interface ClassChange { id: UUID; old_course_name: string; new_course_name: string; old_instructor_name: string | null; new_instructor_name: string | null; old_price: Money; new_price: Money; old_total: Money; new_total: Money; reason: string; changed_by_id: UUID; created_at: string; excess_handling: "CREDIT" | "REFUND"; refund_amount: Money; refund_status: "NONE" | "PENDING" | "PAID" | "CANCELLED"; refund_method: "CASH" | "BANK_TRANSFER" | null; refunded_on: string | null; refund_tracking_code: string | null }

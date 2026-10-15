@@ -10,6 +10,7 @@ from backend.app.repositories.audit import AuditRepository
 from backend.app.repositories.roles import RoleRepository
 from backend.app.repositories.users import UserRepository
 from backend.app.schemas.auth import BusinessProfileUpdate, LoginRequest, RegisterRequest
+from backend.app.services.school_setup import initialize_school_workspace
 
 PUBLIC_REGISTRATION_ROLE = "OWNER"
 
@@ -69,6 +70,7 @@ class AuthenticationService:
         self.users.add(user)
         try:
             self.session.flush()
+            initialize_school_workspace(self.session, user)
             self.audit.record(
                 action="identity.registration",
                 resource_type="user",
@@ -87,6 +89,7 @@ class AuthenticationService:
     def update_business_profile(self, user: User, data: BusinessProfileUpdate) -> User:
         previous = user.business_category
         user.business_category = data.business_category
+        initialize_school_workspace(self.session, user)
         self.audit.record(
             action="identity.business_profile.updated",
             resource_type="user",
@@ -104,7 +107,8 @@ class AuthenticationService:
             identifier_type = "email"
             user = self.users.get_by_email(identifier)
         else:
-            assert data.phone_number is not None
+            if data.phone_number is None:
+                raise AuthenticationError("Invalid email, phone number, or password")
             identifier = data.phone_number
             identifier_type = "phone_number"
             user = self.users.get_by_phone_number(identifier)
@@ -119,6 +123,7 @@ class AuthenticationService:
             raise AuthenticationError("Invalid email, phone number, or password")
 
         user.last_login_at = datetime.now(UTC)
+        initialize_school_workspace(self.session, user)
         self.audit.record(
             action="identity.login",
             resource_type="user",
@@ -127,7 +132,7 @@ class AuthenticationService:
             success=True,
         )
         self.session.commit()
-        return user, create_access_token(user.id)
+        return user, create_access_token(user.id, session_version=user.session_version)
 
     def _record_failed_login(
         self, *, identifier_type: str, identifier: str, actor: User | None = None

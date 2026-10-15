@@ -9,6 +9,7 @@ from sqlalchemy import (
     DateTime,
     ForeignKey,
     Index,
+    Integer,
     String,
     Table,
     UniqueConstraint,
@@ -67,6 +68,7 @@ class User(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     email: Mapped[str | None] = mapped_column(String(320), index=True, nullable=True)
     phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
     password_hash: Mapped[str] = mapped_column(String(512), nullable=False)
+    session_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
     is_active: Mapped[bool] = mapped_column(

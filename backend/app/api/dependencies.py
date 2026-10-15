@@ -5,7 +5,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
-from backend.app.core.tokens import InvalidAccessTokenError, decode_access_token
+from backend.app.core.tokens import InvalidAccessTokenError, decode_access_claims
 from backend.app.db.database import get_db
 from backend.app.db.models import User
 from backend.app.repositories.users import UserRepository
@@ -25,11 +25,11 @@ def get_current_user(
     if credentials is None:
         raise unauthorized
     try:
-        user_id = decode_access_token(credentials.credentials)
+        user_id, session_version = decode_access_claims(credentials.credentials)
     except InvalidAccessTokenError as exc:
         raise unauthorized from exc
     user = UserRepository(session).get_by_id(user_id)
-    if user is None or not user.is_active:
+    if user is None or not user.is_active or user.session_version != session_version:
         raise unauthorized
     return user
 

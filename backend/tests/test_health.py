@@ -28,7 +28,7 @@ def test_security_headers_and_https_only_hsts() -> None:
         https_response = https_client.get("/api/v1/health")
 
     assert http_response.headers["content-security-policy"] == (
-        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+        "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
     )
     assert http_response.headers["x-content-type-options"] == "nosniff"
     assert http_response.headers["x-frame-options"] == "DENY"

@@ -50,6 +50,7 @@ class CourseRead(ORMModel):
     price: Decimal
     session_count: int = 0
     is_active: bool
+    is_deleted: bool = False
 
 
 class DiscountCodeCreate(BaseModel):
@@ -107,6 +108,7 @@ class SpecialSupportRead(ORMModel):
     monthly_price: Decimal
     seasonal_price: Decimal
     is_active: bool
+    is_deleted: bool = False
 
 
 class SpecialSupportSelection(BaseModel):
@@ -115,6 +117,28 @@ class SpecialSupportSelection(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     support_id: UUID
     period: Literal["MONTHLY", "SEASONAL"]
+
+
+class ExamPricingPeriodCreate(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    name: str = Field(min_length=1, max_length=200)
+    starts_on: date | None = None
+    ends_on: date | None = None
+
+    @model_validator(mode="after")
+    def validate_dates(self) -> "ExamPricingPeriodCreate":
+        if self.starts_on is None and self.ends_on is None:
+            raise ValueError("حداقل تاریخ شروع یا پایان بازه را انتخاب کنید.")
+        if self.starts_on and self.ends_on and self.starts_on > self.ends_on:
+            raise ValueError("تاریخ پایان نباید قبل از تاریخ شروع باشد.")
+        return self
+
+
+class ExamPricingPeriodRead(ORMModel):
+    id: UUID
+    name: str
+    starts_on: date | None
+    ends_on: date | None
 
 
 class ExamPlanRead(ORMModel):
@@ -128,6 +152,10 @@ class ExamPlanRead(ORMModel):
     book_voucher_amount: Decimal
     book_voucher_discount: Decimal
     is_active: bool
+    pricing_period_id: UUID | None = None
+    revision: int = 1
+    is_current: bool = True
+    is_deleted: bool = False
 
 
 class ExamPlanUpdate(BaseModel):
@@ -143,6 +171,8 @@ class ExamPlanUpdate(BaseModel):
     book_voucher_amount: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
     book_voucher_discount: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
     is_active: bool = True
+    pricing_period_id: UUID | None = None
+    expected_revision: int | None = Field(default=None, ge=1)
 
     @model_validator(mode="after")
     def voucher_discount_must_not_exceed_amount(self) -> "ExamPlanUpdate":
@@ -185,10 +215,10 @@ class StudentEnrollmentCreate(BaseModel):
     previous_school: str | None = Field(default=None, max_length=200)
     emergency_contact: str | None = Field(default=None, max_length=200)
     notes: str | None = Field(default=None, max_length=1000)
-    course_ids: list[UUID] = Field(default_factory=list)
+    course_ids: list[UUID] = Field(default_factory=list, max_length=200)
     discount_code: str | None = Field(default=None, max_length=50)
     special_support: SpecialSupportSelection | None = None
-    payments: list[EnrollmentPaymentCreate] = Field(default_factory=list)
+    payments: list[EnrollmentPaymentCreate] = Field(default_factory=list, max_length=120)
 
 
 class EnrollmentCourseRead(ORMModel):

@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from backend.app.core.passwords import hash_password
 from backend.app.db.database import SessionLocal
-from backend.app.db.models import Role, User
+from backend.app.db.models import Role, SchoolInstitute, User
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
@@ -42,6 +42,7 @@ def test_secretary_password_reset_is_scoped_to_creating_manager(client: TestClie
               "email": "reset.secretary@example.com", "password": PASSWORD},
     )
     assert created.status_code == 201
+    old_session = login_headers(client, "reset.secretary@example.com")
     with SessionLocal() as session:
         secretary = session.scalar(select(User).where(User.email == "reset.secretary@example.com"))
         secretary_id = str(secretary.id)
@@ -60,6 +61,8 @@ def test_secretary_password_reset_is_scoped_to_creating_manager(client: TestClie
     wrong_school_url = f"/api/v1/school/institutes/{second_school['id']}/secretaries/{secretary_id}/password"
     assert client.patch(wrong_school_url, headers=manager, json={"password": new_password}).status_code == 404
     assert client.patch(url, headers=manager, json={"password": new_password}).status_code == 204
+    assert client.get("/api/v1/auth/me", headers=old_session).status_code == 401
+    client.app.state.auth_rate_limiter.clear()
     assert client.post("/api/v1/auth/login", json={"email": "reset.secretary@example.com", "password": PASSWORD}).status_code == 401
     assert client.post("/api/v1/auth/login", json={"email": "reset.secretary@example.com", "password": new_password}).status_code == 200
 
@@ -148,6 +151,10 @@ def school_users(client: TestClient) -> tuple[dict[str, str], dict[str, str]]:
         )
         session.add(manager)
         session.flush()
+        school = SchoolInstitute(manager_id=manager.id, name="آموزشگاه اول")
+        session.add(school)
+        session.flush()
+        manager.active_school_institute_id = school.id
         session.add(
             User(
                 email="employee@example.com",
@@ -156,6 +163,7 @@ def school_users(client: TestClient) -> tuple[dict[str, str], dict[str, str]]:
                 last_name="Employee",
                 business_category="EDUCATION",
                 school_manager_id=manager.id,
+                school_institute_id=school.id,
                 roles=[employee_role],
             )
         )
@@ -247,27 +255,26 @@ def test_second_institute_has_a_separate_secretary_and_student_data(client: Test
     assert {row["school_name"] for row in comparison.json()} == {"آموزشگاه اول", "شعبه دوم"}
 
 
-def test_employee_cannot_choose_course_from_another_grade(client: TestClient) -> None:
+def test_manager_and_secretary_cannot_choose_course_from_another_grade(client: TestClient) -> None:
     manager, employee = school_users(client)
     course = client.post(
         "/api/v1/school/courses",
         headers=manager,
         json={"name": "علوم", "grade": "GRADE_8", "price": "100000"},
     ).json()
-    response = client.post(
-        "/api/v1/school/students/enroll",
-        headers=employee,
-        json={
-            "full_name": "دانش‌آموز دوم",
-            "national_id": "1234567891",
-            "birth_date": str(date(2014, 1, 1)),
-            "grade": "GRADE_7",
-            "guardian_full_name": "ولی دوم",
-            "guardian_phone": "09120000001",
-            "course_ids": [course["id"]],
-        },
-    )
-    assert response.status_code == 422
+    registration = {
+        "full_name": "دانش‌آموز دوم",
+        "national_id": "1234567891",
+        "birth_date": str(date(2014, 1, 1)),
+        "grade": "GRADE_7",
+        "guardian_full_name": "ولی دوم",
+        "guardian_phone": "09120000001",
+        "course_ids": [course["id"]],
+    }
+    for actor in (manager, employee):
+        response = client.post("/api/v1/school/students/enroll", headers=actor, json=registration)
+        assert response.status_code == 422
+        assert response.json()["detail"] == "Every selected course must match the student's grade"
 
 
 def test_only_manager_can_edit_course_details(client: TestClient) -> None:

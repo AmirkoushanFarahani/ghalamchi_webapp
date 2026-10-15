@@ -372,9 +372,14 @@ def test_ml_api_security_management_prediction_history_and_feedback(client: Test
     )
 
     owner = headers_for(client, "OWNER", "ml-owner@example.com")
+    admin = headers_for(client, "ADMIN", "ml-platform-admin@example.com")
+    assert client.post(
+        "/api/v1/ml/models/register", headers=owner,
+        json={"pipeline": "transaction_classification", "artifact_identifier": "transaction/transaction-v1"},
+    ).status_code == 403
     registered = client.post(
         "/api/v1/ml/models/register",
-        headers=owner,
+        headers=admin,
         json={
             "pipeline": "transaction_classification",
             "artifact_identifier": "transaction/transaction-v1",
@@ -382,7 +387,8 @@ def test_ml_api_security_management_prediction_history_and_feedback(client: Test
     )
     assert registered.status_code == 201
     assert "artifact_identifier" not in registered.json()
-    activated = client.post(f"/api/v1/ml/models/{registered.json()['id']}/activate", headers=owner)
+    assert client.post(f"/api/v1/ml/models/{registered.json()['id']}/activate", headers=owner).status_code == 403
+    activated = client.post(f"/api/v1/ml/models/{registered.json()['id']}/activate", headers=admin)
     assert activated.status_code == 200 and activated.json()["is_active"]
     predicted = client.post(
         "/api/v1/ml/transactions/classify",

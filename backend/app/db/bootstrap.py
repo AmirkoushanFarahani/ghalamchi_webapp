@@ -79,7 +79,8 @@ ACCOUNTING_WRITE = ACCOUNTING_READ | {
 
 ROLE_PERMISSIONS = {
     "ADMIN": set(PERMISSIONS),
-    "OWNER": {name for name in PERMISSIONS if not name.startswith("users:")},
+    "OWNER": {name for name in PERMISSIONS if not name.startswith("users:")}
+    - {"ml:manage", "ml:train"},
     "ACCOUNTANT": {
         "accounting:read",
         "accounting:write",

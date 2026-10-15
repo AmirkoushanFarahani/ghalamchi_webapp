@@ -32,7 +32,8 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY backend /app/backend
-RUN pip install --no-cache-dir "/app/backend[ml]"
+RUN pip install --no-cache-dir -c /app/backend/constraints-production.txt "/app/backend[ml]" \
+    && python -m pip uninstall --yes pip
 COPY ml /app/ml
 COPY --from=frontend-build /build/dist /var/www/azari
 COPY docker/paas-entrypoint.sh /app/docker/paas-entrypoint.sh

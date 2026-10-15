@@ -3,11 +3,12 @@ from decimal import Decimal
 from typing import Annotated, Literal, cast
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.api.dependencies import require_permission
+from backend.app.api.routes.auth import enforce_auth_rate_limit
 from backend.app.core.config import Settings, get_settings
 from backend.app.db.database import get_db
 from backend.app.db.models import (
@@ -42,6 +43,8 @@ from backend.app.schemas.school import (
     EnrollmentRead,
     ExamPlanRead,
     ExamPlanUpdate,
+    ExamPricingPeriodCreate,
+    ExamPricingPeriodRead,
     PaymentStatusUpdate,
     RefundAction,
     RegistrationFeesRead,
@@ -235,7 +238,8 @@ def create_secretary(
     try:
         service(session, actor).create_secretary(school_id, data)
         school = session.get(SchoolInstitute, school_id)
-        assert school is not None
+        if school is None:
+            raise SchoolError("School or institute was not found")
         return institute_read(session, school)
     except SchoolConflictError as exc:
         raise HTTPException(409, str(exc)) from exc
@@ -296,7 +300,9 @@ def reset_secretary_password(
     data: SchoolSecretaryPasswordReset,
     session: SessionDep,
     actor: Annotated[User, Depends(require_permission("school:manage"))],
+    request: Request,
 ) -> Response:
+    enforce_auth_rate_limit(request, "secretary-password-reset", session, str(actor.id))
     try:
         service(session, actor).reset_secretary_password(school_id, secretary_id, data)
     except SchoolError as exc:
@@ -322,8 +328,11 @@ def list_courses(
     session: SessionDep,
     actor: Annotated[User, Depends(require_permission("school:read"))],
     grade: str | None = None,
+    include_deleted: bool = False,
 ) -> list[SchoolCourse]:
-    return service(session, actor).list_courses(grade)
+    if include_deleted and "school:manage" not in actor.permission_names:
+        raise HTTPException(403, "Insufficient permission")
+    return service(session, actor).list_courses(grade, include_deleted)
 
 
 @router.post("/courses", response_model=CourseRead, status_code=status.HTTP_201_CREATED)
@@ -355,9 +364,13 @@ def update_course(
 
 @router.get("/special-supports", response_model=list[SpecialSupportRead])
 def list_special_supports(
-    session: SessionDep, actor: Annotated[User, Depends(require_permission("school:read"))]
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:read"))],
+    include_deleted: bool = False,
 ) -> list[SchoolSpecialSupport]:
-    return service(session, actor).list_special_supports()
+    if include_deleted and "school:manage" not in actor.permission_names:
+        raise HTTPException(403, "Insufficient permission")
+    return service(session, actor).list_special_supports(include_deleted)
 
 
 @router.post(
@@ -412,15 +425,86 @@ def create_discount(
         raise HTTPException(409, str(exc)) from exc
 
 
+@router.get("/exam-pricing-periods", response_model=list[ExamPricingPeriodRead])
+def list_exam_pricing_periods(
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:read"))],
+) -> list[ExamPricingPeriodRead]:
+    return [
+        ExamPricingPeriodRead.model_validate(period)
+        for period in service(session, actor).list_exam_pricing_periods()
+    ]
+
+
+@router.post("/exam-pricing-periods", response_model=ExamPricingPeriodRead, status_code=201)
+def create_exam_pricing_period(
+    data: ExamPricingPeriodCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> ExamPricingPeriodRead:
+    try:
+        return ExamPricingPeriodRead.model_validate(
+            service(session, actor).create_exam_pricing_period(data)
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/exam-plans/{plan_id}/restore", response_model=ExamPlanRead)
+def restore_exam_plan(
+    plan_id: UUID,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> ExamPlanRead:
+    try:
+        return ExamPlanRead.model_validate(service(session, actor).restore_exam_plan(plan_id))
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
 @router.get("/exam-plans", response_model=list[ExamPlanRead])
 def list_exam_plans(
     session: SessionDep,
     actor: Annotated[User, Depends(require_permission("school:read"))],
     grade: str | None = None,
+    include_deleted: bool = False,
 ) -> list[ExamPlanRead]:
+    if include_deleted and "school:manage" not in actor.permission_names:
+        raise HTTPException(403, "Insufficient permission")
     return [
-        ExamPlanRead.model_validate(plan) for plan in service(session, actor).list_exam_plans(grade)
+        ExamPlanRead.model_validate(plan)
+        for plan in service(session, actor).list_exam_plans(grade, include_deleted)
     ]
+
+
+@router.delete("/catalog/{kind}/{item_id}", status_code=204)
+def delete_catalog_item(
+    kind: Literal["courses", "special-supports", "exam-plans"],
+    item_id: UUID,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> Response:
+    try:
+        service(session, actor).set_catalog_deleted(kind, item_id, True)
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return Response(status_code=204)
+
+
+@router.post("/catalog/{kind}/{item_id}/restore", status_code=204)
+def restore_catalog_item(
+    kind: Literal["courses", "special-supports", "exam-plans"],
+    item_id: UUID,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> Response:
+    try:
+        service(session, actor).set_catalog_deleted(kind, item_id, False)
+    except SchoolError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return Response(status_code=204)
 
 
 @router.post("/exam-plans", response_model=ExamPlanRead, status_code=status.HTTP_201_CREATED)
@@ -433,6 +517,8 @@ def create_exam_plan(
         return ExamPlanRead.model_validate(service(session, actor).create_exam_plan(data))
     except SchoolConflictError as exc:
         raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.patch("/exam-plans/{plan_id}", response_model=ExamPlanRead)

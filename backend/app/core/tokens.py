@@ -10,7 +10,9 @@ class InvalidAccessTokenError(ValueError):
     """Raised when an access token cannot be trusted."""
 
 
-def create_access_token(user_id: UUID, *, now: datetime | None = None) -> str:
+def create_access_token(
+    user_id: UUID, *, now: datetime | None = None, session_version: int = 0
+) -> str:
     settings = get_settings()
     issued_at = now or datetime.now(UTC)
     expires_at = issued_at + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -20,6 +22,7 @@ def create_access_token(user_id: UUID, *, now: datetime | None = None) -> str:
         "iat": issued_at,
         "exp": expires_at,
         "jti": str(uuid4()),
+        "sv": session_version,
     }
     return jwt.encode(
         payload,
@@ -29,16 +32,23 @@ def create_access_token(user_id: UUID, *, now: datetime | None = None) -> str:
 
 
 def decode_access_token(token: str) -> UUID:
+    return decode_access_claims(token)[0]
+
+
+def decode_access_claims(token: str) -> tuple[UUID, int]:
     settings = get_settings()
     try:
         payload = jwt.decode(
             token,
             settings.JWT_SECRET.get_secret_value(),
             algorithms=[settings.JWT_ALGORITHM],
-            options={"require": ["sub", "type", "iat", "exp", "jti"]},
+            options={"require": ["sub", "type", "iat", "exp", "jti", "sv"]},
         )
         if payload.get("type") != "access":
             raise InvalidAccessTokenError("Invalid token type")
-        return UUID(payload["sub"])
+        version = payload["sv"]
+        if type(version) is not int or version < 0:
+            raise InvalidAccessTokenError("Invalid session version")
+        return UUID(payload["sub"]), version
     except (jwt.InvalidTokenError, ValueError, TypeError, KeyError) as exc:
         raise InvalidAccessTokenError("Invalid or expired access token") from exc

@@ -25,6 +25,8 @@ from backend.app.db.models import (
     EnrollmentPayment,
     EnrollmentServiceAttendance,
     EnrollmentServiceCancellation,
+    EnrollmentSupportChange,
+    ExamPricingPeriod,
     Role,
     SchoolCost,
     SchoolCourse,
@@ -36,6 +38,7 @@ from backend.app.db.models import (
     StudentEnrollment,
     User,
 )
+from backend.app.services.exam_pricing import install_exam_catalog
 from sqlalchemy import select
 
 MANAGER_EMAIL = "demo.school.manager2@example.com"
@@ -44,6 +47,7 @@ MODELS: tuple[type[Any], ...] = (
     SchoolCourse,
     DiscountCode,
     SchoolRegistrationFees,
+    ExamPricingPeriod,
     SchoolExamPlan,
     SchoolSpecialSupport,
     Student,
@@ -53,6 +57,7 @@ MODELS: tuple[type[Any], ...] = (
     EnrollmentClassChange,
     EnrollmentServiceAttendance,
     EnrollmentServiceCancellation,
+    EnrollmentSupportChange,
     SchoolCost,
 )
 SNAPSHOT = Path(__file__).parent / "data" / "demo_database.json.gz.b64"
@@ -127,6 +132,7 @@ def export_demo() -> None:
                 EnrollmentClassChange,
                 EnrollmentServiceAttendance,
                 EnrollmentServiceCancellation,
+                EnrollmentSupportChange,
             ):
                 rows = list(
                     session.scalars(select(model).where(model.enrollment_id.in_(enrollment_ids)))
@@ -183,6 +189,11 @@ def typed_values(model: type[Any], record: dict[str, Any]) -> dict[str, Any]:
 
 
 def import_demo() -> None:
+    if (
+        os.environ.get("APP_ENV", "development").casefold() == "production"
+        and os.environ.get("ALLOW_DEMO_DATA_IN_PRODUCTION", "false").casefold() != "true"
+    ):
+        raise ValueError("Production demo import requires ALLOW_DEMO_DATA_IN_PRODUCTION=true")
     password = os.environ.get("DEMO_IMPORT_PASSWORD", "")
     if not 12 <= len(password) <= 128:
         raise ValueError("Set DEMO_IMPORT_PASSWORD to a new password of 12–128 characters")
@@ -230,6 +241,12 @@ def import_demo() -> None:
                     user.school_institute_id = school_id
                     user.active_school_institute_id = active_id
                 session.flush()
+        manager = session.scalar(select(User).where(User.email == MANAGER_EMAIL))
+        if manager is not None:
+            for school in session.scalars(
+                select(SchoolInstitute).where(SchoolInstitute.manager_id == manager.id)
+            ):
+                install_exam_catalog(session, manager.id, school.id)
     print("Demo school database imported successfully.")
 
 
@@ -237,6 +254,12 @@ def ensure_demo() -> None:
     """Seed once at Docker startup when the deployer supplies a demo password."""
     if not os.environ.get("DEMO_IMPORT_PASSWORD"):
         print("Demo startup import skipped: DEMO_IMPORT_PASSWORD is not set.")
+        return
+    if (
+        os.environ.get("APP_ENV", "development").casefold() == "production"
+        and os.environ.get("ALLOW_DEMO_DATA_IN_PRODUCTION", "false").casefold() != "true"
+    ):
+        print("Production demo import skipped: explicit demo opt-in is disabled.")
         return
     data = json.loads(gzip.decompress(base64.b64decode(SNAPSHOT.read_text(encoding="ascii"))))
     emails = [user["email"] for user in data["users"]]

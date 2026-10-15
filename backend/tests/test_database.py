@@ -67,6 +67,7 @@ def test_rbac_bootstrap_is_idempotent() -> None:
         assert len(session.scalars(select(Permission)).all()) == len(PERMISSIONS)
         assert {permission.name for permission in roles["OWNER"].permissions} == {
             name for name in PERMISSIONS if not name.startswith("users:")
+            and name not in {"ml:manage", "ml:train"}
         }
 
 

@@ -1,7 +1,7 @@
 from typing import cast
 
 from backend.app.core.passwords import hash_password
-from backend.app.db.bootstrap import PERMISSIONS
+from backend.app.db.bootstrap import ROLE_PERMISSIONS
 from backend.app.db.database import SessionLocal
 from backend.app.db.models import AuditEvent, User
 from fastapi.testclient import TestClient
@@ -41,9 +41,8 @@ def test_registration_normalizes_email_assigns_owner_and_hides_password(
     assert body["plan_status"] == "FREE"
     assert body["roles"] == ["OWNER"]
     assert "invoices:write" in body["permissions"]
-    assert set(body["permissions"]) == {
-        permission for permission in PERMISSIONS if not permission.startswith("users:")
-    }
+    assert set(body["permissions"]) == ROLE_PERMISSIONS["OWNER"]
+    assert "ml:manage" not in body["permissions"]
     assert "password" not in body
     assert "password_hash" not in body
 

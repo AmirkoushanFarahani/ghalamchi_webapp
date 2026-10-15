@@ -6,7 +6,7 @@ from datetime import date
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from backend.app.api.dependencies import require_permission
@@ -89,7 +89,8 @@ def classify_transaction(
     prediction, value = MLService(session, settings).classify_transaction(
         data.description, actor, data.source_reference
     )
-    assert prediction.confidence is not None
+    if prediction.confidence is None:
+        raise HTTPException(503, "Model prediction unavailable")
     return TransactionPredictionResponse(
         prediction_id=prediction.id,
         category=str(value["category"]),
@@ -106,7 +107,8 @@ def payment_risk(
 ) -> PaymentRiskResponse:
     as_of = data.as_of or date.today()
     prediction, value = MLService(session, settings).payment_risk(data.invoice_id, as_of, actor)
-    assert prediction.confidence is not None
+    if prediction.confidence is None:
+        raise HTTPException(503, "Model prediction unavailable")
     return PaymentRiskResponse(
         prediction_id=prediction.id,
         invoice_id=data.invoice_id,

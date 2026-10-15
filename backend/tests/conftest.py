@@ -5,6 +5,16 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
+if os.environ.get("DATABASE_URL") not in {
+    None,
+    "sqlite+pysqlite:///:memory:",
+    "sqlite:///:memory:",
+}:
+    raise RuntimeError(
+        "Backend unit tests require an in-memory SQLite DATABASE_URL; "
+        "refusing to create/drop tables in an external database. "
+        "Use the dedicated isolated PostgreSQL verification scripts instead."
+    )
 os.environ.setdefault("DATABASE_URL", "sqlite+pysqlite:///:memory:")
 os.environ.setdefault("JWT_SECRET", "test-only-secret-that-is-at-least-32-characters")
 os.environ.setdefault("ML_MODEL_DIR", ".test-models")

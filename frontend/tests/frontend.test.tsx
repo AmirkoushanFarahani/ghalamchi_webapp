@@ -17,6 +17,7 @@ import uiSource from "../src/components/ui.tsx?raw";
 import { configureApi, api, ApiError } from "../src/services/api";
 import { explanationScopeLabel, formatMoney, formatNumber, formatPercent, paymentMethodLabel, riskSignalLabel, segmentDescriptionLabel, toEnglishDigits, transactionCategoryLabel } from "../src/utils/format";
 import { gregorianToJalali, jalaliToGregorian } from "../src/utils/date";
+import { currentExamPeriod, examPeriodLabel } from "../src/utils/examPricing";
 import { visibleNavigationPaths } from "../src/layouts/AppLayout";
 import { formatMoneyInput, MoneyInput, normalizeMoneyInput } from "../src/components/ui";
 import { defaultTheme, nextTheme, ThemeProvider } from "../src/theme/ThemeContext";
@@ -34,6 +35,21 @@ import { classChangeAmounts } from "../src/pages/StudentClassActions";
 import classActionsSource from "../src/pages/StudentClassActions.tsx?raw";
 import studentDetailSource from "../src/pages/StudentDetailPage.tsx?raw";
 import type { Course, Enrollment, EnrollmentCourse } from "../src/types/api";
+
+test("exam pricing chooses inclusive date periods and leaves workbook gaps unmatched", () => {
+  const periods = [
+    { id: "early", name: "تا ۱۵ تیر", starts_on: null, ends_on: "2026-07-06" },
+    { id: "late", name: "شروع ۱۸ مهر", starts_on: "2026-10-10", ends_on: null },
+    { id: "winter", name: "زمستان", starts_on: "2027-01-01", ends_on: "2027-03-01" },
+  ];
+  assert.equal(currentExamPeriod(periods, "2026-07-06")?.id, "early");
+  assert.equal(currentExamPeriod(periods, "2026-07-07"), undefined);
+  assert.equal(currentExamPeriod(periods, "2026-10-10")?.id, "late");
+  assert.equal(currentExamPeriod(periods, "2027-01-01")?.id, "winter");
+  assert.equal(currentExamPeriod(periods, "2027-03-01")?.id, "winter");
+  assert.equal(currentExamPeriod(periods, "2027-03-02")?.id, "late");
+  assert.ok(examPeriodLabel(periods[1]).includes("1405/07/18"));
+});
 
 test("class replacement previews extra payment, preserved discount and student credit", () => {
   const enrollment = { subtotal: "1000", discount_amount: "100", total_amount: "900", amount_paid: "900" } as Enrollment;

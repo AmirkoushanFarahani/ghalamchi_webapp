@@ -5,7 +5,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY backend /app/backend
-RUN pip install --no-cache-dir "/app/backend[ml]"
+RUN pip install --no-cache-dir -c /app/backend/constraints-production.txt "/app/backend[ml]" \
+    && python -m pip uninstall --yes pip
 COPY ml /app/ml
 RUN groupadd --system azari \
     && useradd --system --gid azari --home-dir /nonexistent --no-create-home azari \
@@ -14,4 +15,4 @@ RUN groupadd --system azari \
 USER azari
 
 EXPOSE 8000
-CMD ["sh", "-c", "alembic -c /app/backend/alembic.ini upgrade head && python -m backend.app.db.bootstrap && python -m backend.scripts.demo_database ensure && exec uvicorn backend.app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "alembic -c /app/backend/alembic.ini upgrade head && python -m backend.app.db.bootstrap && python -m backend.scripts.demo_database ensure && exec uvicorn backend.app.main:app --host 0.0.0.0 --port 8000 --no-access-log"]

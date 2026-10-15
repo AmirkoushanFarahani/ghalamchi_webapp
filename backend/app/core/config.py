@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     DB_ADMISSION_TIMEOUT_SECONDS: float = Field(default=1, gt=0, le=10)
     AUTH_RATE_LIMIT_ATTEMPTS: int = Field(default=5, ge=1, le=100)
     AUTH_RATE_LIMIT_WINDOW_SECONDS: int = Field(default=60, ge=1, le=3600)
+    AUTH_ACCOUNT_RATE_LIMIT_ATTEMPTS: int = Field(default=20, ge=1, le=100)
+    MAX_REQUEST_BYTES: int = Field(default=1_048_576, ge=1024, le=10_485_760)
     CORS_ORIGINS: list[str] = Field(default_factory=lambda: ["http://localhost:4173"])
     ML_MODEL_DIR: Path = Path("ml/models")
     ML_CONFIDENCE_THRESHOLD: float = Field(default=0.65, ge=0, le=1)
@@ -59,6 +61,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_bootstrap_admin(self) -> "Settings":
+        if self.APP_ENV.casefold() == "production":
+            secret = self.JWT_SECRET.get_secret_value().casefold()
+            if any(marker in secret for marker in ("change-me", "replace-with", "test-only")):
+                raise ValueError("Production JWT_SECRET must be a unique private secret")
+            if "*" in self.CORS_ORIGINS:
+                raise ValueError("Production CORS origins must be explicit")
         email_set = self.BOOTSTRAP_ADMIN_EMAIL is not None
         password_set = self.BOOTSTRAP_ADMIN_PASSWORD is not None
         if email_set != password_set:

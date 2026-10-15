@@ -63,6 +63,7 @@ class SchoolCourse(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     session_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
 
 class DiscountCode(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -122,6 +123,25 @@ class SchoolRegistrationFees(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     )
 
 
+class ExamPricingPeriod(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "school_exam_pricing_periods"
+    __table_args__ = (
+        UniqueConstraint("school_institute_id", "name", name="uq_exam_period_school_name"),
+        CheckConstraint(
+            "starts_on IS NULL OR ends_on IS NULL OR starts_on <= ends_on",
+            name="valid_exam_pricing_period_dates",
+        ),
+    )
+
+    workspace_owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    school_institute_id: Mapped[UUID] = mapped_column(
+        ForeignKey("school_institutes.id", ondelete="RESTRICT"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(200))
+    starts_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+
+
 class SchoolExamPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     """Manager-owned exam and book-voucher pricing for a grade and major."""
 
@@ -133,7 +153,10 @@ class SchoolExamPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             "grade",
             "academic_track",
             "plan_code",
-            name="uq_school_exam_plan_workspace_grade_track_code",
+            "pricing_period_id",
+            "revision",
+            name="uq_school_exam_plan_period_revision",
+            postgresql_nulls_not_distinct=True,
         ),
         CheckConstraint(GRADE_CHECK, name="valid_school_exam_plan_grade"),
         CheckConstraint("exam_count > 0", name="positive_school_exam_plan_count"),
@@ -160,12 +183,18 @@ class SchoolExamPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     grade: Mapped[str] = mapped_column(String(20), index=True)
     academic_track: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     plan_code: Mapped[str] = mapped_column(String(30))
+    pricing_period_id: Mapped[UUID | None] = mapped_column(
+        ForeignKey("school_exam_pricing_periods.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    revision: Mapped[int] = mapped_column(Integer, default=1, server_default="1")
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
     exam_count: Mapped[int] = mapped_column(Integer)
     exam_unit_price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     exam_total: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     book_voucher_amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     book_voucher_discount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
 
 class SchoolSpecialSupport(UUIDPrimaryKeyMixin, TimestampMixin, Base):
@@ -197,6 +226,7 @@ class SchoolSpecialSupport(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         Numeric(18, 2), default=Decimal("0"), server_default="0"
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
+    is_deleted: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
 
 
 class Student(UUIDPrimaryKeyMixin, TimestampMixin, Base):

@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from backend.app.db.models import Role, User
@@ -34,11 +35,29 @@ class UserService:
         self.audit = AuditRepository(session)
 
     def list_users(self) -> list[User]:
+        if self.actor is not None and "ADMIN" not in self.actor.role_names:
+            return list(
+                self.session.scalars(
+                    select(User)
+                    .where(
+                        or_(
+                            User.id == self.actor.id,
+                            User.school_manager_id == self.actor.id,
+                        )
+                    )
+                    .order_by(User.created_at)
+                )
+            )
         return self.repository.list_users()
 
     def get_user(self, user_id: UUID) -> User:
         user = self.repository.get_by_id(user_id)
-        if user is None:
+        if user is None or (
+            self.actor is not None
+            and "ADMIN" not in self.actor.role_names
+            and user.id != self.actor.id
+            and user.school_manager_id != self.actor.id
+        ):
             raise UserNotFoundError("User not found")
         return user
 
@@ -60,6 +79,7 @@ class UserService:
             )
 
         user.roles = roles
+        user.session_version += 1
         self._audit_roles_changed(user, old_roles, sorted(found_names))
         self.session.commit()
         return user
@@ -68,9 +88,7 @@ class UserService:
         self._lock_admin_role()
         user = self._get_for_update(user_id)
         if not data.is_active and self.actor is not None and user.id == self.actor.id:
-            raise UserManagementConflictError(
-                "Administrators cannot deactivate their own account"
-            )
+            raise UserManagementConflictError("Administrators cannot deactivate their own account")
         if (
             user.is_active
             and not data.is_active
@@ -83,6 +101,7 @@ class UserService:
 
         old_status = user.is_active
         user.is_active = data.is_active
+        user.session_version += 1
         self._audit_status_changed(user, old_status, data.is_active)
         self.session.commit()
         return user
@@ -99,9 +118,7 @@ class UserService:
             raise UserNotFoundError("User not found")
         return user
 
-    def _audit_roles_changed(
-        self, user: User, old_roles: list[str], new_roles: list[str]
-    ) -> None:
+    def _audit_roles_changed(self, user: User, old_roles: list[str], new_roles: list[str]) -> None:
         self.audit.record(
             action="identity.user.roles_changed",
             resource_type="user",
