@@ -1,4 +1,4 @@
-# Azari Intelligent Accounting
+# مهرخازن
 
 An academic, production-oriented accounting application integrating
 double-entry bookkeeping with transaction classification, payment-delay risk,

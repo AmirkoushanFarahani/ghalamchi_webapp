@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     )
 
     APP_ENV: str = "development"
-    APP_NAME: str = "Azari Intelligent Accounting"
+    APP_NAME: str = "مهرخازن"
     API_V1_PREFIX: str = "/api/v1"
     DATABASE_URL: str
     JWT_SECRET: SecretStr

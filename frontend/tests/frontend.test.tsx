@@ -9,6 +9,9 @@ import adminSource from "../src/pages/AdminPages.tsx?raw";
 import dashboardSource from "../src/pages/DashboardPage.tsx?raw";
 import customersSource from "../src/pages/CustomersPage.tsx?raw";
 import loginPageSource from "../src/pages/LoginPage.tsx?raw";
+import { RegisterPage } from "../src/pages/LoginPage";
+import { RouterProvider } from "../src/routes/router";
+import { APP_NAME, BRAND_INITIAL } from "../src/brand";
 import masterDataSource from "../src/pages/MasterDataPages.tsx?raw";
 import layoutSource from "../src/layouts/AppLayout.tsx?raw";
 import transactionSource from "../src/pages/TransactionsPages.tsx?raw";
@@ -106,7 +109,33 @@ Object.assign(globalThis, {
   sessionStorage: { getItem: (key: string) => storage.get(key) ?? null, setItem: (key: string, value: string) => storage.set(key, value), removeItem: (key: string) => storage.delete(key) },
 });
 
-test("document is Persian and RTL", () => { assert.match(indexHtml, /<html lang="fa" dir="rtl">/); assert.match(indexHtml, /حسابداری آذری/); });
+test("registration hides business selection and submits the education category", () => {
+  const previousLocation = Object.getOwnPropertyDescriptor(globalThis, "location");
+  Object.defineProperty(globalThis, "location", { configurable: true, value: { pathname: "/register" } });
+  try {
+    const html = renderToStaticMarkup(<AuthProvider><RouterProvider><RegisterPage/></RouterProvider></AuthProvider>);
+    assert.doesNotMatch(html, /نوع کسب‌وکار|name="business_category"|<select/);
+    assert.ok(html.includes(APP_NAME));
+    for (const name of ["first_name", "last_name", "email", "phone_number", "password", "password_confirmation"]) {
+      assert.ok(html.includes(`name="${name}"`));
+    }
+    assert.match(loginPageSource, /business_category: "EDUCATION"/);
+    assert.doesNotMatch(loginPageSource, /form\.get\("business_category"\)/);
+  } finally {
+    if (previousLocation) Object.defineProperty(globalThis, "location", previousLocation);
+    else Reflect.deleteProperty(globalThis, "location");
+  }
+});
+
+test("document and app branding use Mehrkhazen in Persian RTL", () => {
+  assert.match(indexHtml, /<html lang="fa" dir="rtl">/);
+  assert.equal(APP_NAME, "مهرخازن");
+  assert.equal(BRAND_INITIAL, "م");
+  assert.ok(indexHtml.includes(`<title>${APP_NAME}</title>`));
+  assert.match(layoutSource, /<strong>\{APP_NAME\}<small>/);
+  assert.match(layoutSource, /<footer>\{APP_NAME\}/);
+  assert.doesNotMatch(layoutSource + loginPageSource + appSource, /حسابداری آذری|>آ</);
+});
 test("Persian typography is self-hosted with Vazirmatn", () => { assert.match(mainSource, /@fontsource\/vazirmatn\/400\.css/); assert.match(mainSource, /@fontsource\/vazirmatn\/800\.css/); assert.match(styleSource, /font-family: Vazirmatn/); });
 test("financial formatting always uses English digits", () => { assert.equal(formatMoney("123456.7"), "123,456.70"); assert.equal(formatMoney("123456.00"), "123,456"); assert.equal(formatMoney("0.00"), "0"); assert.equal(formatMoney("-123456.00"), "-123,456"); assert.equal(formatNumber(1234.5), "1,234.5"); assert.equal(formatPercent(.831), "83.1%"); assert.equal(toEnglishDigits("۱۲۳٤٥"), "12345"); });
 test("Jalali and Gregorian conversion round trip", () => { assert.equal(gregorianToJalali("2026-08-25"), "1405/06/03"); assert.equal(jalaliToGregorian("۱۴۰۵/۰۶/۰۳"), "2026-08-25"); assert.throws(() => jalaliToGregorian("1404/12/30")); });
