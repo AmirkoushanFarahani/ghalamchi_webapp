@@ -545,6 +545,30 @@ class SchoolService:
             )
         )
 
+    def import_exam_catalog(self) -> dict[str, int]:
+        """Explicitly append workbook dates/prices to this institute only."""
+        self._require_manager()
+        try:
+            added = install_exam_catalog(
+                self.session, self.workspace_owner_id, self.school_institute_id
+            )
+            periods_count = len(self.list_exam_pricing_periods())
+            AuditRepository(self.session).record(
+                action="school.exam_catalog.imported",
+                resource_type="school_institute",
+                resource_id=str(self.school_institute_id),
+                actor_id=self.actor.id,
+                success=True,
+                details={"added_prices": added, "periods_count": periods_count},
+            )
+            self.session.commit()
+        except (ValueError, IntegrityError) as exc:
+            self.session.rollback()
+            raise SchoolConflictError(
+                "بازه هم‌نام با تاریخ متفاوت وجود دارد؛ ابتدا بازه‌ها را بررسی کنید."
+            ) from exc
+        return {"added_prices": added, "periods_count": periods_count}
+
     def create_exam_pricing_period(self, data: ExamPricingPeriodCreate) -> ExamPricingPeriod:
         self._require_manager()
         period = ExamPricingPeriod(

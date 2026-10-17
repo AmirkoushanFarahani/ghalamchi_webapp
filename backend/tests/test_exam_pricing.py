@@ -1,11 +1,11 @@
 from decimal import Decimal
 
 from backend.app.db.database import SessionLocal
-from backend.app.db.models import SchoolInstitute
+from backend.app.db.models import ExamPricingPeriod, SchoolExamPlan, SchoolInstitute
 from backend.app.services.exam_pricing import install_exam_catalog
 from backend.tests.test_school_api import school_users
 from fastapi.testclient import TestClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 
 def plan_body(plan: dict) -> dict:
@@ -54,6 +54,102 @@ def test_workbook_dates_prices_and_repeat_import(client: TestClient) -> None:
         assert school is not None
         assert install_exam_catalog(session, school.manager_id, school.id) == 0
     assert len(client.get("/api/v1/school/exam-plans", headers=manager).json()) == 407
+
+
+def test_manager_can_import_missing_workbook_dates_without_replacing_old_prices(
+    client: TestClient,
+) -> None:
+    manager, employee = school_users(client)
+    school_id = client.get("/api/v1/school/institutes", headers=manager).json()[0]["id"]
+    # Model an existing deployment which has legacy prices but no dated catalog.
+    with SessionLocal.begin() as session:
+        session.execute(delete(SchoolExamPlan))
+        session.execute(delete(ExamPricingPeriod))
+        school = session.scalar(select(SchoolInstitute))
+        assert school is not None
+        old = SchoolExamPlan(
+            workspace_owner_id=school.manager_id,
+            school_institute_id=school.id,
+            grade="GRADE_7",
+            academic_track=None,
+            plan_code="OLD",
+            exam_count=10,
+            exam_unit_price=Decimal("100"),
+            exam_total=Decimal("1000"),
+            book_voucher_amount=Decimal("0"),
+            book_voucher_discount=Decimal("0"),
+        )
+        session.add(old)
+        session.flush()
+        old_id = str(old.id)
+    periods_url = "/api/v1/school/exam-pricing-periods"
+    plans_url = "/api/v1/school/exam-plans"
+    assert client.get(periods_url, headers=manager).json() == []
+    assert len(client.get(plans_url, headers=manager).json()) == 1
+    enrolled = client.post(
+        "/api/v1/school/students/enroll",
+        headers=employee,
+        json={
+            "full_name": "دانش‌آموز سابق",
+            "national_id": "9800000009",
+            "birth_date": "2013-01-01",
+            "grade": "GRADE_7",
+            "guardian_full_name": "ولی",
+            "guardian_phone": "09120000000",
+            "course_ids": [],
+            "exam_registered": True,
+            "exam_plan_id": old_id,
+        },
+    )
+    assert enrolled.status_code == 201, enrolled.text
+    student_url = f"/api/v1/school/students/{enrolled.json()['id']}"
+    snapshot = client.get(student_url, headers=manager).json()
+    second = client.post(
+        "/api/v1/school/institutes", headers=manager, json={"name": "مدرسه جدا"}
+    ).json()
+    client.patch(
+        "/api/v1/school/institutes/active",
+        headers=manager,
+        json={"school_institute_id": second["id"]},
+    )
+    second_ids = {p["id"] for p in client.get(plans_url, headers=manager).json()}
+    client.patch(
+        "/api/v1/school/institutes/active", headers=manager, json={"school_institute_id": school_id}
+    )
+    url = "/api/v1/school/exam-catalog/import"
+    assert client.post(url).status_code == 401
+    assert client.post(url, headers=employee).status_code == 403
+    imported = client.post(url, headers=manager)
+    assert imported.status_code == 200, imported.text
+    assert imported.json() == {"added_prices": 407, "periods_count": 11}
+    plans = client.get(plans_url, headers=manager).json()
+    assert len(plans) == 408
+    legacy = next(plan for plan in plans if plan["id"] == old_id)
+    assert legacy["exam_total"] == "1000.00" and legacy["pricing_period_id"] is None
+    assert client.get(student_url, headers=manager).json() == snapshot
+    dated = next(plan for plan in plans if plan["pricing_period_id"] is not None)
+    updated = plan_body(dated)
+    updated["exam_unit_price"] = str(Decimal(dated["exam_unit_price"]) + 1)
+    updated["exam_total"] = str(Decimal(updated["exam_unit_price"]) * dated["exam_count"])
+    edited = client.patch(f"{plans_url}/{dated['id']}", headers=manager, json=updated)
+    assert edited.status_code == 200
+    assert client.post(url, headers=manager).json() == {"added_prices": 0, "periods_count": 11}
+    after = client.get(plans_url, headers=manager).json()
+    edited_total = next(p for p in after if p["id"] == edited.json()["id"])["exam_total"]
+    assert Decimal(edited_total) == Decimal(updated["exam_total"])
+    assert (
+        client.patch(
+            "/api/v1/school/institutes/active",
+            headers=manager,
+            json={"school_institute_id": second["id"]},
+        ).status_code
+        == 200
+    )
+    other = client.get(plans_url, headers=manager).json()
+    assert len(other) == 407 and all(plan["id"] != old_id for plan in other)
+    assert {p["id"] for p in other} == second_ids
+    assert client.post(url, headers=manager).json()["added_prices"] == 0
+    assert school_id != second["id"]
 
 
 def test_revisions_keep_student_invoice_and_can_restore_old_price(client: TestClient) -> None:

@@ -134,6 +134,11 @@ class ExamPricingPeriodCreate(BaseModel):
         return self
 
 
+class ExamCatalogImportRead(BaseModel):
+    added_prices: int
+    periods_count: int
+
+
 class ExamPricingPeriodRead(ORMModel):
     id: UUID
     name: str

@@ -41,6 +41,7 @@ from backend.app.schemas.school import (
     EnrollmentPaymentCreate,
     EnrollmentPaymentRead,
     EnrollmentRead,
+    ExamCatalogImportRead,
     ExamPlanRead,
     ExamPlanUpdate,
     ExamPricingPeriodCreate,
@@ -446,6 +447,19 @@ def create_exam_pricing_period(
         return ExamPricingPeriodRead.model_validate(
             service(session, actor).create_exam_pricing_period(data)
         )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.post("/exam-catalog/import", response_model=ExamCatalogImportRead)
+def import_exam_catalog(
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+    request: Request,
+) -> ExamCatalogImportRead:
+    enforce_auth_rate_limit(request, "exam-catalog-import", session, str(actor.id))
+    try:
+        return ExamCatalogImportRead.model_validate(service(session, actor).import_exam_catalog())
     except SchoolConflictError as exc:
         raise HTTPException(409, str(exc)) from exc
 

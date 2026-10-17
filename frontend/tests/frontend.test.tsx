@@ -20,7 +20,9 @@ import uiSource from "../src/components/ui.tsx?raw";
 import { configureApi, api, ApiError } from "../src/services/api";
 import { explanationScopeLabel, formatMoney, formatNumber, formatPercent, paymentMethodLabel, riskSignalLabel, segmentDescriptionLabel, toEnglishDigits, transactionCategoryLabel } from "../src/utils/format";
 import { gregorianToJalali, jalaliToGregorian } from "../src/utils/date";
-import { currentExamPeriod, examPeriodLabel } from "../src/utils/examPricing";
+import { currentExamPeriod, examPeriodGroups, examPeriodLabel, orderedExamPeriods } from "../src/utils/examPricing";
+import { ExamPeriodSelect } from "../src/components/ExamPeriodSelect";
+import workbookCatalog from "../../backend/app/services/exam_pricing_catalog.json";
 import { visibleNavigationPaths } from "../src/layouts/AppLayout";
 import { formatMoneyInput, MoneyInput, normalizeMoneyInput } from "../src/components/ui";
 import { defaultTheme, nextTheme, ThemeProvider } from "../src/theme/ThemeContext";
@@ -52,6 +54,22 @@ test("exam pricing chooses inclusive date periods and leaves workbook gaps unmat
   assert.equal(currentExamPeriod(periods, "2027-03-01")?.id, "winter");
   assert.equal(currentExamPeriod(periods, "2027-03-02")?.id, "late");
   assert.ok(examPeriodLabel(periods[1]).includes("1405/07/18"));
+});
+
+test("exam period selector lists all workbook dates and keeps past periods selectable", () => {
+  const periods = workbookCatalog.periods.map((period) => ({ ...period, id: period.key }));
+  const reversed = [...periods].reverse();
+  assert.equal(periods.length, 11);
+  assert.deepEqual(orderedExamPeriods(reversed).map((p) => p.id), periods.map((p) => p.id));
+  const html = renderToStaticMarkup(<ExamPeriodSelect periods={reversed} value="14050215" onChange={() => undefined}/>);
+  assert.ok(html.includes("بازه قیمت آزمون"));
+  for (const period of periods) assert.ok(html.includes(period.name));
+  assert.match(html, /<option(?=[^>]*value="14050215")(?=[^>]*selected="")[^>]*>/);
+  assert.equal(examPeriodGroups(periods, "14050215", "2026-10-18")[0].id, "14050215");
+  assert.equal(examPeriodGroups(periods, "current", "2026-10-18")[0].id, "14050718");
+  assert.equal(examPeriodGroups(periods, "all", "2026-10-18").length, 12);
+  assert.deepEqual(examPeriodGroups(periods, "current", "2026-07-07"), []);
+  assert.deepEqual(examPeriodGroups(periods, "legacy", "2026-10-18").map((p) => p.id), ["legacy"]);
 });
 
 test("class replacement previews extra payment, preserved discount and student credit", () => {

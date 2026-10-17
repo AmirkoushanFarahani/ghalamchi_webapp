@@ -18,7 +18,8 @@ import { useAsync } from "../hooks/useAsync";
 import { api, request } from "../services/api";
 import { Link } from "../routes/router";
 import { todayIso } from "../utils/date";
-import { currentExamPeriod, examPeriodLabel } from "../utils/examPricing";
+import { currentExamPeriod, examPeriodGroups, examPeriodLabel } from "../utils/examPricing";
+import { ExamPeriodSelect } from "../components/ExamPeriodSelect";
 import type {
   Course,
   DiscountCode,
@@ -85,6 +86,7 @@ export function CoursesPage() {
   const [examGradeFilter, setExamGradeFilter] = useState("");
   const [showExamHistory, setShowExamHistory] = useState(false);
   const [examActionError, setExamActionError] = useState("");
+  const [examCatalogMessage, setExamCatalogMessage] = useState("");
   const [examActionBusy, setExamActionBusy] = useState(false);
   const [editingSupport, setEditingSupport] = useState<SpecialSupport | null>(null);
   const [supportOpen, setSupportOpen] = useState(false);
@@ -93,10 +95,18 @@ export function CoursesPage() {
   const courses = useAsync(() => api.get<Course[]>(`/school/courses${deletedQuery}`), [deletedQuery]);
   const examPlans = useAsync(() => api.get<ExamPlan[]>(`/school/exam-plans${deletedQuery}`), [deletedQuery]);
   const examPeriods = useAsync(() => api.get<ExamPricingPeriod[]>("/school/exam-pricing-periods"), []);
-  const currentPeriod = currentExamPeriod(examPeriods.data ?? [], todayIso());
-  const chosenPeriod = examPeriodFilter === "current" ? currentPeriod?.id : examPeriodFilter;
-  const periodGroups = [...(examPeriods.data ?? []).map((period) => ({ id: period.id, label: examPeriodLabel(period) })), { id: "legacy", label: "تعرفه‌های قبلی بدون بازه تاریخ" }]
-    .filter((period) => chosenPeriod === "all" || period.id === chosenPeriod);
+  const periodGroups = examPeriodGroups(examPeriods.data ?? [], examPeriodFilter, todayIso());
+  async function importExamCatalog() {
+    setExamActionError(""); setExamCatalogMessage(""); setExamActionBusy(true);
+    try {
+      const result = await api.post<{ added_prices: number; periods_count: number }>("/school/exam-catalog/import");
+      await Promise.all([examPlans.reload(), examPeriods.reload()]);
+      setExamPeriodFilter("all");
+      setExamCatalogMessage(`${result.periods_count} بازه آماده نمایش است؛ ${result.added_prices} قیمت جدید اضافه شد. قیمت‌های قبلی حفظ شدند.`);
+    } catch (reason) {
+      setExamActionError(reason instanceof Error ? reason.message : "بارگذاری بازه‌ها ناموفق بود.");
+    } finally { setExamActionBusy(false); }
+  }
   async function restoreExamPlan(plan: ExamPlan) {
     if (!window.confirm("این قیمت قبلی به‌عنوان نسخه جدید فعال شود؟ قیمت‌های ثبت‌شده و فاکتورهای قبلی حفظ می‌شوند.")) return;
     setExamActionError(""); setExamActionBusy(true);
@@ -251,8 +261,11 @@ export function CoursesPage() {
         <p className="form-description">کاتالوگ قیمت بر اساس پایه و رشته دانش‌آموز است. مسئول ثبت‌نام فقط طرح مناسب را انتخاب می‌کند و امکان تغییر مبلغ ندارد.</p>
         <p className="muted">قیمت‌ها براساس بازه تاریخ و پایه دسته‌بندی شده‌اند. هر ویرایش یک نسخه جدید می‌سازد و قیمت قبلی در سابقه باقی می‌ماند.</p>
         {can("school:manage") && <button className="button button--secondary" onClick={() => setNewExamPeriod(true)}>بازه قیمت جدید</button>}
+        {can("school:manage") && <button className="button button--secondary" disabled={examActionBusy || examPeriods.loading} onClick={() => void importExamCatalog()}>{examActionBusy ? "در حال بارگذاری…" : "بارگذاری بازه‌ها و قیمت‌های فایل آزمون"}</button>}
+        {!examPeriods.loading && !examPeriods.error && !examPeriods.data?.length && <p className="alert">هنوز بازه تاریخ برای این آموزشگاه ثبت نشده است. {can("school:manage") ? "با دکمه بارگذاری، بازه‌های فایل آزمون را اضافه کنید؛ قیمت‌های قبلی حذف نمی‌شوند." : "از مدیر بخواهید بازه‌های فایل آزمون را بارگذاری کند."}</p>}
+        {examCatalogMessage && <p role="status">{examCatalogMessage}</p>}
         <div className="form-grid form-grid--2">
-          <Field label="بازه قیمت آزمون"><select value={examPeriodFilter} onChange={(event) => setExamPeriodFilter(event.target.value)}><option value="current">بازه جاری براساس تاریخ امروز</option><option value="all">همه بازه‌ها</option>{(examPeriods.data ?? []).map((period) => <option key={period.id} value={period.id}>{examPeriodLabel(period)}</option>)}<option value="legacy">تعرفه‌های قبلی بدون تاریخ</option></select></Field>
+          <ExamPeriodSelect periods={examPeriods.data ?? []} value={examPeriodFilter} onChange={setExamPeriodFilter} disabled={examPeriods.loading || examActionBusy} />
           <Field label="فیلتر پایه"><select value={examGradeFilter} onChange={(event) => setExamGradeFilter(event.target.value)}><option value="">همه پایه‌ها</option>{grades.map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></Field>
         </div>
         {can("school:manage") && <label className="check"><input type="checkbox" checked={showExamHistory} onChange={(event) => setShowExamHistory(event.target.checked)} /> نمایش نسخه‌های قبلی قیمت‌ها</label>}

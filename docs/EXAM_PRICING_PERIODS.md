@@ -42,6 +42,18 @@ from row 1, which takes precedence over the repeated `14050529` headings in row 
 
 ## Existing databases
 
+Managers can also open `/courses` and click «بارگذاری بازه‌ها و قیمت‌های فایل آزمون».
+This authenticated, rate-limited POST imports missing workbook entries into the
+**currently selected institute only**, records an audit event, and preserves
+legacy prices, edited revisions, custom periods and student invoices. Repeating
+it does not duplicate prices. Secretaries cannot perform the import.
+
+The «بازه قیمت آزمون» selector lists dated periods chronologically, including past
+dates; choosing one displays its prices grouped by grade. «همه بازه‌ها» displays
+all periods and the separate undated legacy catalog. Managers can use
+«نمایش نسخه‌های قبلی قیمت‌ها» to inspect older revisions within a period. GET requests
+remain read-only; missing dates are never silently imported when the page opens.
+
 Back up the database, apply Alembic revision `20261015_0028`, then run:
 
 ```sh
