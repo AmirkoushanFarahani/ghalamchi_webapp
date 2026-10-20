@@ -73,7 +73,8 @@ def test_more_expensive_class_requires_difference_and_retains_history(
     old = course(client, manager, "Physics Ahmadi", "1000")
     target = course(client, manager, "Physics Rezaei", "1500")
     student = enroll(client, employee, [old])
-    data = payload(student, old, target)
+    reason = "درخواست دانش‌آموز برای تغییر دبیر\nبه دلیل تغییر برنامه هفتگی کلاس‌ها"
+    data = payload(student, old, target, reason=reason)
     if collect:
         data["payment"] = {"amount": "500", "method": "BANK_TRANSFER", "tracking_code": "DIFF-1"}
     response = client.patch(
@@ -86,6 +87,7 @@ def test_more_expensive_class_requires_difference_and_retains_history(
     assert Decimal(updated["balance_due"]) == (0 if collect else 500)
     assert updated["courses"][0]["instructor_name"] == "Physics Rezaei teacher"
     assert updated["class_changes"][0]["old_instructor_name"] == "Physics Ahmadi teacher"
+    assert updated["class_changes"][0]["reason"] == reason
     assert len(updated["payments"]) == (2 if collect else 1)
     assert client.patch(change_url(student, old), headers=employee, json=data).status_code == 422
     if not collect:

@@ -42,6 +42,12 @@ import classActionsSource from "../src/pages/StudentClassActions.tsx?raw";
 import studentDetailSource from "../src/pages/StudentDetailPage.tsx?raw";
 import type { Course, Enrollment, EnrollmentCourse } from "../src/types/api";
 
+test("class change reason is multiline and modal typing does not restart autofocus", () => {
+  assert.match(classActionsSource, /<textarea value=\{reason\}[^\n]*rows=\{4\}[^\n]*maxLength=\{500\}/);
+  assert.doesNotMatch(uiSource, /\[open, onClose\]/);
+  assert.match(uiSource, /onCloseRef\.current\(\)/);
+});
+
 test("exam pricing chooses inclusive date periods and leaves workbook gaps unmatched", () => {
   const periods = [
     { id: "early", name: "تا ۱۵ تیر", starts_on: null, ends_on: "2026-07-06" },

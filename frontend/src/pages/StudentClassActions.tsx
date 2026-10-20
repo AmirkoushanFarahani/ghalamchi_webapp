@@ -54,7 +54,7 @@ export function ClassChangeModal({ student, enrollment, oldClass, close, saved }
         {amounts.credit > 0 && <><Field label="انتخاب دانش‌آموز برای اضافه‌پرداخت"><select value={handling} onChange={(e) => setHandling(e.target.value as "CREDIT" | "REFUND")}><option value="CREDIT">نگهداری اعتبار دانش‌آموز</option><option value="REFUND">درخواست بازپرداخت با تأیید مدیر</option></select></Field><p>اعتبار در همین پرونده ذخیره می‌شود. درخواست بازپرداخت تا ثبت پرداخت واقعی توسط مدیر، خروج پول محسوب نمی‌شود.</p></>}
         {enrollment.payments.some((p) => p.status === "PENDING") && <p className="alert">چک‌ها و اقساط قبلی خودکار تغییر نمی‌کنند؛ در صورت کاهش شهریه، برنامه قبلی را بررسی و موارد جایگزین‌شده را لغو کنید.</p>}
       </>}
-      <Field label="علت تغییر کلاس"><input value={reason} onChange={(e) => setReason(e.target.value)} required maxLength={500} placeholder="مثلاً درخواست دانش‌آموز برای تغییر دبیر" /></Field>
+      <Field label="علت تغییر کلاس" hint="توضیح کامل را بنویسید؛ حداکثر ۵۰۰ نویسه."><textarea value={reason} onChange={(e) => setReason(e.target.value)} required rows={4} maxLength={500} placeholder="مثلاً درخواست دانش‌آموز برای تغییر دبیر" /></Field>
       <div className="form-actions"><button type="button" className="button button--secondary" disabled={busy} onClick={close}>انصراف</button><button className="button button--primary" disabled={busy || !target}>{busy ? "در حال ثبت…" : "تأیید تغییر کلاس"}</button></div>
     </form>}
   </Modal>;
