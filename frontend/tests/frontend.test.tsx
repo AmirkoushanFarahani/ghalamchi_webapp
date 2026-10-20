@@ -7,6 +7,7 @@ import styleSource from "../src/styles.css?raw";
 import appSource from "../src/App.tsx?raw";
 import adminSource from "../src/pages/AdminPages.tsx?raw";
 import dashboardSource from "../src/pages/DashboardPage.tsx?raw";
+import studentRecordsSource from "../src/pages/StudentRecordsPage.tsx?raw";
 import customersSource from "../src/pages/CustomersPage.tsx?raw";
 import loginPageSource from "../src/pages/LoginPage.tsx?raw";
 import { RegisterPage } from "../src/pages/LoginPage";
@@ -70,6 +71,15 @@ test("exam period selector lists all workbook dates and keeps past periods selec
   assert.equal(examPeriodGroups(periods, "all", "2026-10-18").length, 12);
   assert.deepEqual(examPeriodGroups(periods, "current", "2026-07-07"), []);
   assert.deepEqual(examPeriodGroups(periods, "legacy", "2026-10-18").map((p) => p.id), ["legacy"]);
+});
+
+test("school navigation dashboard and record page consistently say student records", () => {
+  const records = navigationForBusiness("EDUCATION").flatMap((entry) => "path" in entry ? [entry] : entry.items)
+    .find((entry) => entry.path === "/student-records");
+  assert.equal(records?.label, "پرونده دانش آموزان");
+  assert.match(dashboardSource, />پرونده دانش آموزان<\/Link>/);
+  assert.match(studentRecordsSource, /title="پرونده دانش آموزان"/);
+  assert.doesNotMatch(layoutSource + dashboardSource + studentRecordsSource, /پرونده مشتریان/);
 });
 
 test("class replacement previews extra payment, preserved discount and student credit", () => {
