@@ -10,24 +10,32 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.db.models import ExamPricingPeriod, SchoolExamPlan, SchoolInstitute
+from backend.app.services.academic_years import ensure_initial_years
 
 
 def install_exam_catalog(session: Session, owner_id: UUID, school_id: UUID) -> int:
     """Append missing workbook prices. Never alter existing plans or registrations."""
     session.scalar(select(SchoolInstitute).where(SchoolInstitute.id == school_id).with_for_update())
+    ensure_initial_years(session, owner_id, school_id)
     catalog = json.loads(
         Path(__file__).with_name("exam_pricing_catalog.json").read_text(encoding="utf-8")
     )
     existing_periods = {
         period.name: period
         for period in session.scalars(
-            select(ExamPricingPeriod).where(ExamPricingPeriod.school_institute_id == school_id)
+            select(ExamPricingPeriod).where(
+                ExamPricingPeriod.school_institute_id == school_id,
+                ExamPricingPeriod.academic_year == "1405/1406",
+            )
         )
     }
     existing_plans = {
         (plan.pricing_period_id, plan.grade, plan.academic_track, plan.plan_code)
         for plan in session.scalars(
-            select(SchoolExamPlan).where(SchoolExamPlan.school_institute_id == school_id)
+            select(SchoolExamPlan).where(
+                SchoolExamPlan.school_institute_id == school_id,
+                SchoolExamPlan.academic_year == "1405/1406",
+            )
         )
     }
     added = 0

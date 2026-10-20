@@ -29,6 +29,7 @@ from backend.app.db.models.school import (
     EnrollmentServiceCancellation,
     EnrollmentSupportChange,
     ExamPricingPeriod,
+    SchoolAcademicYear,
     SchoolCost,
     SchoolCourse,
     SchoolExamPlan,
@@ -41,6 +42,7 @@ from backend.app.db.models.school import (
 from backend.app.db.models.security import AuthRateLimit
 
 __all__ = [
+    "SchoolAcademicYear",
     "AuthRateLimit",
     "Expense",
     "SchoolCourse",

@@ -17,6 +17,7 @@ from backend.app.db.models import (
     EnrollmentSupportChange,
     ExamPricingPeriod,
     Role,
+    SchoolAcademicYear,
     SchoolCost,
     SchoolCourse,
     SchoolExamPlan,
@@ -29,6 +30,7 @@ from backend.app.db.models import (
 )
 from backend.app.repositories.audit import AuditRepository
 from backend.app.schemas.school import (
+    AcademicYearCreate,
     AttendanceCreate,
     ClassChangeCreate,
     CourseCreate,
@@ -416,7 +418,74 @@ class SchoolService:
             query = query.where(SchoolCourse.is_deleted.is_(False))
         return list(self.session.scalars(query.order_by(SchoolCourse.grade, SchoolCourse.name)))
 
+    def list_academic_years(self) -> list[SchoolAcademicYear]:
+        return list(
+            self.session.scalars(
+                select(SchoolAcademicYear)
+                .where(
+                    SchoolAcademicYear.workspace_owner_id == self.workspace_owner_id,
+                    SchoolAcademicYear.school_institute_id == self.school_institute_id,
+                )
+                .order_by(SchoolAcademicYear.name.desc())
+            )
+        )
+
+    def require_academic_year(self, name: str) -> SchoolAcademicYear:
+        year = self.session.scalar(
+            select(SchoolAcademicYear).where(
+                SchoolAcademicYear.workspace_owner_id == self.workspace_owner_id,
+                SchoolAcademicYear.school_institute_id == self.school_institute_id,
+                SchoolAcademicYear.name == name,
+            )
+        )
+        if year is None:
+            raise SchoolError("سال تحصیلی در این آموزشگاه تعریف نشده است.")
+        return year
+
+    def save_academic_year(
+        self, data: AcademicYearCreate, update: bool = False
+    ) -> SchoolAcademicYear:
+        self._require_manager()
+        self.session.scalar(
+            select(SchoolInstitute.id)
+            .where(SchoolInstitute.id == self.school_institute_id)
+            .with_for_update()
+        )
+        year = next((row for row in self.list_academic_years() if row.name == data.name), None)
+        if update:
+            year = self.require_academic_year(data.name)
+            year.starts_on, year.ends_on = data.starts_on, data.ends_on
+        else:
+            if year is not None:
+                raise SchoolConflictError("این سال تحصیلی قبلاً تعریف شده است.")
+            year = SchoolAcademicYear(
+                workspace_owner_id=self.workspace_owner_id,
+                school_institute_id=self.school_institute_id,
+                **data.model_dump(),
+            )
+            self.session.add(year)
+        AuditRepository(self.session).record(
+            action="school.academic_year.updated" if update else "school.academic_year.created",
+            resource_type="school_institute",
+            resource_id=str(self.school_institute_id),
+            actor_id=self.actor.id,
+            success=True,
+            details={"academic_year": data.name},
+        )
+        self.session.commit()
+        return year
+
+    def find_student(self, national_id: str) -> Student | None:
+        return self.session.scalar(
+            select(Student).where(
+                Student.workspace_owner_id == self.workspace_owner_id,
+                Student.school_institute_id == self.school_institute_id,
+                Student.national_id == national_id,
+            )
+        )
+
     def create_course(self, data: CourseCreate) -> SchoolCourse:
+        self.require_academic_year(data.academic_year)
         course = SchoolCourse(
             workspace_owner_id=self.workspace_owner_id,
             school_institute_id=self.school_institute_id,
@@ -442,6 +511,9 @@ class SchoolService:
         )
         if course is None or course.is_deleted:
             raise SchoolError("Course was not found")
+
+        if course.academic_year != data.academic_year:
+            raise SchoolError("سال تحصیلی کلاس قبلی تغییر نمی‌کند؛ کلاس جدید ایجاد کنید.")
 
         for field, value in data.model_dump().items():
             setattr(course, field, value)
@@ -571,6 +643,7 @@ class SchoolService:
 
     def create_exam_pricing_period(self, data: ExamPricingPeriodCreate) -> ExamPricingPeriod:
         self._require_manager()
+        self.require_academic_year(data.academic_year)
         period = ExamPricingPeriod(
             workspace_owner_id=self.workspace_owner_id,
             school_institute_id=self.school_institute_id,
@@ -588,6 +661,7 @@ class SchoolService:
 
     def _lock_exam_catalog(self, data: ExamPlanUpdate) -> None:
         self._require_manager()
+        self.require_academic_year(data.academic_year)
         self.session.scalar(
             select(SchoolInstitute)
             .where(
@@ -601,6 +675,7 @@ class SchoolService:
                     ExamPricingPeriod.id == data.pricing_period_id,
                     ExamPricingPeriod.school_institute_id == self.school_institute_id,
                     ExamPricingPeriod.workspace_owner_id == self.workspace_owner_id,
+                    ExamPricingPeriod.academic_year == data.academic_year,
                 )
             )
             if period is None:
@@ -614,6 +689,7 @@ class SchoolService:
                 SchoolExamPlan.grade == data.grade,
                 SchoolExamPlan.academic_track == data.academic_track,
                 SchoolExamPlan.plan_code == data.plan_code,
+                SchoolExamPlan.academic_year == data.academic_year,
                 SchoolExamPlan.pricing_period_id == data.pricing_period_id,
                 SchoolExamPlan.is_current.is_(True),
             )
@@ -630,6 +706,8 @@ class SchoolService:
         )
         if plan is None or plan.is_deleted:
             raise SchoolError("Exam plan was not found")
+        if plan.academic_year != data.academic_year:
+            raise SchoolError("سال تحصیلی تعرفه قبلی تغییر نمی‌کند؛ طرح جدید ایجاد کنید.")
         if "pricing_period_id" not in data.model_fields_set:
             data = data.model_copy(update={"pricing_period_id": plan.pricing_period_id})
         if not plan.is_current or (
@@ -818,6 +896,7 @@ class SchoolService:
                     SchoolExamPlan.grade == item.grade,
                     SchoolExamPlan.academic_track == item.academic_track,
                     SchoolExamPlan.plan_code == item.plan_code,
+                    SchoolExamPlan.academic_year == item.academic_year,
                 )
             )
             for version in versions:
@@ -900,6 +979,14 @@ class SchoolService:
         return student
 
     def create_enrollment(self, data: StudentEnrollmentCreate) -> Student:
+        self.require_academic_year(data.academic_year)
+        # Serialize registrations within an institute, including first-time national IDs.
+        # Repeated enrollments are allowed; duplicate student identities are not.
+        self.session.scalar(
+            select(SchoolInstitute.id)
+            .where(SchoolInstitute.id == self.school_institute_id)
+            .with_for_update()
+        )
         course_ids = list(dict.fromkeys(data.course_ids))
         courses = (
             list(
@@ -920,6 +1007,8 @@ class SchoolService:
             raise SchoolError("One or more selected courses are unavailable")
         if any(course.grade != data.grade for course in courses):
             raise SchoolError("Every selected course must match the student's grade")
+        if any(course.academic_year != data.academic_year for course in courses):
+            raise SchoolError("کلاس انتخاب‌شده متعلق به سال تحصیلی ثبت‌نام نیست.")
 
         discount = self._resolve_discount(data.discount_code)
         exam_plan = self._resolve_exam_plan(data)
@@ -955,25 +1044,14 @@ class SchoolService:
         if paid_amount > total:
             raise SchoolError("Immediate payments cannot exceed the enrollment total")
 
-        student = Student(
-            workspace_owner_id=self.workspace_owner_id,
-            school_institute_id=self.school_institute_id,
-            created_by_id=self.actor.id,
-            **data.model_dump(
-                exclude={
-                    "course_ids",
-                    "discount_code",
-                    "payments",
-                    "registration_date",
-                    "exam_plan_id",
-                    "special_support",
-                }
-            ),
-            registration_date=data.registration_date or date.today(),
-        )
-        self.session.add(student)
-        self.session.flush()
+        student = self.find_student(data.national_id)
+        if student is None:
+            student = self._new_student(data)
         enrollment = StudentEnrollment(
+            academic_year=data.academic_year,
+            grade=data.grade,
+            academic_track=data.academic_track,
+            registration_date=data.registration_date or date.today(),
             workspace_owner_id=self.workspace_owner_id,
             school_institute_id=self.school_institute_id,
             student_id=student.id,
@@ -1041,6 +1119,28 @@ class SchoolService:
         self._load_student_details(student)
         return student
 
+    def _new_student(self, data: StudentEnrollmentCreate) -> Student:
+        student = Student(
+            workspace_owner_id=self.workspace_owner_id,
+            school_institute_id=self.school_institute_id,
+            created_by_id=self.actor.id,
+            **data.model_dump(
+                exclude={
+                    "academic_year",
+                    "course_ids",
+                    "discount_code",
+                    "payments",
+                    "registration_date",
+                    "exam_plan_id",
+                    "special_support",
+                }
+            ),
+            registration_date=data.registration_date or date.today(),
+        )
+        self.session.add(student)
+        self.session.flush()
+        return student
+
     def _ensure_default_exam_plans(self) -> None:
         exists = self.session.scalar(
             select(SchoolExamPlan.id)
@@ -1063,7 +1163,6 @@ class SchoolService:
             return None
         if data.exam_plan_id is None:
             raise SchoolError("Select an exam plan before adding exams or books")
-        self._ensure_default_exam_plans()
         plan = self.session.scalar(
             select(SchoolExamPlan).where(
                 SchoolExamPlan.id == data.exam_plan_id,
@@ -1076,6 +1175,8 @@ class SchoolService:
         )
         if plan is None:
             raise SchoolError("The selected exam plan is unavailable")
+        if plan.academic_year != data.academic_year:
+            raise SchoolError("طرح آزمون متعلق به سال تحصیلی ثبت‌نام نیست.")
         if plan.grade != data.grade or plan.academic_track != data.academic_track:
             raise SchoolError(
                 "The selected exam plan does not match this student's grade and major"
@@ -1198,7 +1299,10 @@ class SchoolService:
         )
         if old is None or target is None:
             raise SchoolError("کلاس ثبت‌شده یا کلاس جایگزین در این آموزشگاه در دسترس نیست.")
-        if target.grade != enrollment.student.grade:
+        if (
+            target.grade != (enrollment.grade or enrollment.student.grade)
+            or target.academic_year != enrollment.academic_year
+        ):
             raise SchoolError("کلاس جایگزین باید مربوط به همان پایه دانش‌آموز باشد.")
         if any(row.course_id == target.id and row.status == "ACTIVE" for row in enrollment.courses):
             raise SchoolConflictError("این کلاس قبلاً در همین پرونده ثبت شده است.")

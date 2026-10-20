@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from backend.app.db.models import SchoolExamPlan, SchoolInstitute, User
+from backend.app.services.academic_years import ensure_initial_years
 from backend.app.services.exam_pricing import install_exam_catalog
 
 
@@ -33,6 +34,7 @@ def initialize_school_workspace(session: Session, actor: User) -> None:
     if active and actor.active_school_institute_id not in {school.id for school in active}:
         actor.active_school_institute_id = active[0].id
     for school in active:
+        ensure_initial_years(session, actor.id, school.id)
         exists = session.scalar(
             select(SchoolExamPlan.id)
             .where(SchoolExamPlan.school_institute_id == school.id)

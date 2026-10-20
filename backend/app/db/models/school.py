@@ -36,12 +36,28 @@ class SchoolInstitute(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, server_default="true")
 
 
+class SchoolAcademicYear(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "school_academic_years"
+    __table_args__ = (
+        UniqueConstraint("school_institute_id", "name", name="uq_academic_year_school_name"),
+        CheckConstraint("starts_on <= ends_on", name="valid_academic_year_dates"),
+    )
+    workspace_owner_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
+    school_institute_id: Mapped[UUID] = mapped_column(
+        ForeignKey("school_institutes.id"), index=True
+    )
+    name: Mapped[str] = mapped_column(String(9))
+    starts_on: Mapped[date] = mapped_column(Date)
+    ends_on: Mapped[date] = mapped_column(Date)
+
+
 class SchoolCourse(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "school_courses"
     __table_args__ = (
         UniqueConstraint(
             "workspace_owner_id",
             "school_institute_id",
+            "academic_year",
             "name",
             "grade",
             name="uq_school_course_workspace_name_grade",
@@ -58,6 +74,9 @@ class SchoolCourse(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     name: Mapped[str] = mapped_column(String(200))
+    academic_year: Mapped[str] = mapped_column(
+        String(9), default="1405/1406", server_default="1405/1406", index=True
+    )
     instructor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     grade: Mapped[str] = mapped_column(String(20), index=True)
     price: Mapped[Decimal] = mapped_column(Numeric(18, 2))
@@ -126,7 +145,9 @@ class SchoolRegistrationFees(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 class ExamPricingPeriod(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     __tablename__ = "school_exam_pricing_periods"
     __table_args__ = (
-        UniqueConstraint("school_institute_id", "name", name="uq_exam_period_school_name"),
+        UniqueConstraint(
+            "school_institute_id", "academic_year", "name", name="uq_exam_period_school_name"
+        ),
         CheckConstraint(
             "starts_on IS NULL OR ends_on IS NULL OR starts_on <= ends_on",
             name="valid_exam_pricing_period_dates",
@@ -138,6 +159,9 @@ class ExamPricingPeriod(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("school_institutes.id", ondelete="RESTRICT"), index=True
     )
     name: Mapped[str] = mapped_column(String(200))
+    academic_year: Mapped[str] = mapped_column(
+        String(9), default="1405/1406", server_default="1405/1406", index=True
+    )
     starts_on: Mapped[date | None] = mapped_column(Date, nullable=True)
     ends_on: Mapped[date | None] = mapped_column(Date, nullable=True)
 
@@ -150,6 +174,7 @@ class SchoolExamPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         UniqueConstraint(
             "workspace_owner_id",
             "school_institute_id",
+            "academic_year",
             "grade",
             "academic_track",
             "plan_code",
@@ -181,6 +206,9 @@ class SchoolExamPlan(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True
     )
     grade: Mapped[str] = mapped_column(String(20), index=True)
+    academic_year: Mapped[str] = mapped_column(
+        String(9), default="1405/1406", server_default="1405/1406", index=True
+    )
     academic_track: Mapped[str | None] = mapped_column(String(100), nullable=True, index=True)
     plan_code: Mapped[str] = mapped_column(String(30))
     pricing_period_id: Mapped[UUID | None] = mapped_column(
@@ -290,6 +318,14 @@ class StudentEnrollment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
 
     workspace_owner_id: Mapped[UUID] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True
+    )
+    academic_year: Mapped[str] = mapped_column(
+        String(9), default="1405/1406", server_default="1405/1406", index=True
+    )
+    grade: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    academic_track: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    registration_date: Mapped[date] = mapped_column(
+        Date, default=date.today, server_default="CURRENT_DATE"
     )
     school_institute_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("school_institutes.id", ondelete="RESTRICT"), nullable=True, index=True

@@ -24,13 +24,14 @@ function PaymentFields({ method, setMethod, dueDate, setDueDate, tracking, setTr
 }
 
 export function ClassChangeModal({ student, enrollment, oldClass, close, saved }: { student: Student; enrollment: Enrollment; oldClass: EnrollmentCourse; close: () => void; saved: () => void }) {
-  const courses = useAsync(() => api.get<Course[]>(`/school/courses?grade=${student.grade}`), [student.grade]);
+  const enrollmentGrade = enrollment.grade ?? student.grade;
+  const courses = useAsync(() => api.get<Course[]>(`/school/courses?grade=${enrollmentGrade}`), [enrollmentGrade]);
   const [selected, setSelected] = useState(""); const [reason, setReason] = useState("");
   const [handling, setHandling] = useState<"CREDIT" | "REFUND">("CREDIT"); const [collect, setCollect] = useState(false);
   const [method, setMethod] = useState<Method>("CASH"); const [dueDate, setDueDate] = useState(todayIso());
   const [tracking, setTracking] = useState(""); const [sayad, setSayad] = useState("");
   const [busy, setBusy] = useState(false); const [error, setError] = useState("");
-  const available = (courses.data ?? []).filter((c) => c.is_active && !enrollment.courses.some((row) => row.course_id === c.id));
+  const available = (courses.data ?? []).filter((c) => c.is_active && c.academic_year === enrollment.academic_year && !enrollment.courses.some((row) => row.course_id === c.id));
   const target = available.find((c) => c.id === selected); const amounts = target ? classChangeAmounts(enrollment, oldClass, target) : null;
   const submit = async (e: FormEvent) => {
     e.preventDefault(); if (!target || !amounts) return; setBusy(true); setError("");

@@ -1,4 +1,9 @@
 export type UUID = string;
+// Optional fields support older exported fixtures; the current API always sends them.
+export interface Course { academic_year?: string }
+export interface ExamPlan { academic_year?: string }
+export interface ExamPricingPeriod { academic_year?: string }
+export interface Enrollment { academic_year?: string; grade?: string | null; academic_track?: string | null; registration_date?: string | null }
 export type Money = string;
 export type PipelineName = "transaction_classification" | "payment_delay_risk" | "cash_flow_forecast" | "customer_segmentation";
 export type BusinessCategory = "RETAIL" | "EDUCATION" | "ONLINE" | "SERVICES";

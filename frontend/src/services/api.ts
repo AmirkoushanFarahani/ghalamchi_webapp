@@ -2,6 +2,7 @@ import type { ApiErrorBody, RegisterRequest, TokenResponse, User } from "../type
 export const API_URL = import.meta.env.VITE_API_URL ?? "/api/v1";
 const messages: Record<number, string> = { 400: "اطلاعات درخواست نامعتبر است.", 401: "نشست شما پایان یافته است. لطفاً دوباره وارد شوید.", 403: "شما اجازه انجام این عملیات را ندارید.", 404: "اطلاعات درخواستی پیدا نشد.", 409: "این عملیات با وضعیت فعلی اطلاعات سازگار نیست.", 422: "لطفاً اطلاعات واردشده را بررسی کنید.", 500: "خطایی در سرور رخ داده است. کمی بعد دوباره تلاش کنید.", 503: "سرویس موردنظر اکنون در دسترس نیست." };
 const fieldLabels: Record<string, string> = {
+  academic_year: "سال تحصیلی", starts_on: "تاریخ شروع", ends_on: "تاریخ پایان",
   full_name: "نام دانش‌آموز", national_id: "کد ملی", birth_date: "تاریخ تولد", grade: "پایه تحصیلی",
   academic_track: "رشته تحصیلی", guardian_full_name: "نام ولی", guardian_phone: "تلفن ولی",
   course_ids: "کلاس‌ها", exam_plan_id: "طرح آزمون", payments: "پرداخت‌ها", due_date: "تاریخ سررسید",

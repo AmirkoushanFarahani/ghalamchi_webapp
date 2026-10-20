@@ -28,6 +28,8 @@ from backend.app.ml.registry import (
     PredictionInputError,
 )
 from backend.app.schemas.school import (
+    AcademicYearCreate,
+    AcademicYearRead,
     AttendanceCreate,
     AttendanceRead,
     ClassChangeCreate,
@@ -109,6 +111,10 @@ def student_read(student: Student) -> StudentRead:
         enrollments=[
             EnrollmentRead(
                 id=enrollment.id,
+                academic_year=enrollment.academic_year,
+                grade=enrollment.grade or student.grade,
+                academic_track=enrollment.academic_track,
+                registration_date=enrollment.registration_date,
                 subtotal=enrollment.subtotal,
                 discount_amount=enrollment.discount_amount,
                 book_price=enrollment.book_price,
@@ -324,6 +330,53 @@ def compare_institutes(
         raise HTTPException(403, str(exc)) from exc
 
 
+@router.get("/academic-years", response_model=list[AcademicYearRead])
+def list_academic_years(
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:read"))],
+) -> list[AcademicYearRead]:
+    return [
+        AcademicYearRead.model_validate(row)
+        for row in service(session, actor).list_academic_years()
+    ]
+
+
+@router.post("/academic-years", response_model=AcademicYearRead, status_code=201)
+def create_academic_year(
+    data: AcademicYearCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> AcademicYearRead:
+    try:
+        return AcademicYearRead.model_validate(service(session, actor).save_academic_year(data))
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@router.patch("/academic-years", response_model=AcademicYearRead)
+def update_academic_year(
+    data: AcademicYearCreate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> AcademicYearRead:
+    try:
+        return AcademicYearRead.model_validate(
+            service(session, actor).save_academic_year(data, update=True)
+        )
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.get("/student-lookup", response_model=StudentRead | None)
+def lookup_student(
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:read"))],
+    national_id: str,
+) -> StudentRead | None:
+    student = service(session, actor).find_student(national_id.strip())
+    return student_read(student) if student is not None else None
+
+
 @router.get("/courses", response_model=list[CourseRead])
 def list_courses(
     session: SessionDep,
@@ -346,6 +399,8 @@ def create_course(
         return service(session, actor).create_course(data)
     except SchoolConflictError as exc:
         raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.patch("/courses/{course_id}", response_model=CourseRead)
@@ -449,6 +504,8 @@ def create_exam_pricing_period(
         )
     except SchoolConflictError as exc:
         raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.post("/exam-catalog/import", response_model=ExamCatalogImportRead)

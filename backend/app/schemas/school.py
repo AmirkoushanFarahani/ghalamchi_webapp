@@ -27,11 +27,30 @@ class ORMModel(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class AcademicYearCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    name: str = Field(pattern=r"^1[0-9]{3}/1[0-9]{3}$")
+    starts_on: date
+    ends_on: date
+
+    @model_validator(mode="after")
+    def validate_year(self) -> "AcademicYearCreate":
+        first, second = map(int, self.name.split("/"))
+        if second != first + 1 or self.starts_on > self.ends_on:
+            raise ValueError("سال تحصیلی و ترتیب تاریخ شروع و پایان معتبر نیست.")
+        return self
+
+
+class AcademicYearRead(AcademicYearCreate, ORMModel):
+    id: UUID
+
+
 class CourseCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     name: str = Field(min_length=1, max_length=200)
     instructor_name: str | None = Field(default=None, max_length=200)
     grade: SchoolGrade
+    academic_year: str = Field(default="1405/1406", pattern=r"^1[0-9]{3}/1[0-9]{3}$")
     price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
     session_count: int = Field(default=0, ge=0, le=500)
 
@@ -43,6 +62,7 @@ class CourseUpdate(CourseCreate):
 
 
 class CourseRead(ORMModel):
+    academic_year: str = "1405/1406"
     id: UUID
     name: str
     instructor_name: str | None
@@ -120,6 +140,7 @@ class SpecialSupportSelection(BaseModel):
 
 
 class ExamPricingPeriodCreate(BaseModel):
+    academic_year: str = Field(default="1405/1406", pattern=r"^1[0-9]{3}/1[0-9]{3}$")
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     name: str = Field(min_length=1, max_length=200)
     starts_on: date | None = None
@@ -140,6 +161,7 @@ class ExamCatalogImportRead(BaseModel):
 
 
 class ExamPricingPeriodRead(ORMModel):
+    academic_year: str = "1405/1406"
     id: UUID
     name: str
     starts_on: date | None
@@ -147,6 +169,7 @@ class ExamPricingPeriodRead(ORMModel):
 
 
 class ExamPlanRead(ORMModel):
+    academic_year: str = "1405/1406"
     id: UUID
     grade: SchoolGrade
     academic_track: str | None
@@ -167,6 +190,7 @@ class ExamPlanUpdate(BaseModel):
     """Manager-controlled replacement of an exam and book-voucher plan."""
 
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    academic_year: str = Field(default="1405/1406", pattern=r"^1[0-9]{3}/1[0-9]{3}$")
     grade: SchoolGrade
     academic_track: str | None = Field(default=None, max_length=100)
     plan_code: str = Field(min_length=1, max_length=30)
@@ -203,6 +227,7 @@ class EnrollmentPaymentCreate(BaseModel):
 
 class StudentEnrollmentCreate(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
+    academic_year: str = Field(default="1405/1406", pattern=r"^1[0-9]{3}/1[0-9]{3}$")
     full_name: str = Field(min_length=3, max_length=200)
     national_id: str = Field(min_length=5, max_length=20)
     student_phone: str | None = Field(default=None, max_length=32)
@@ -339,6 +364,10 @@ class EnrollmentPaymentRead(ORMModel):
 
 
 class EnrollmentRead(ORMModel):
+    academic_year: str = "1405/1406"
+    grade: str | None = None
+    academic_track: str | None = None
+    registration_date: date | None = None
     id: UUID
     subtotal: Decimal
     discount_amount: Decimal

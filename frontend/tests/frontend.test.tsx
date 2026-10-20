@@ -1,4 +1,12 @@
 import test from "node:test";
+import { examPlanTrackLabel } from "../src/pages/SchoolPages";
+
+test("exam table uses a dash for grades 1–9 and preserves upper-grade majors", () => {
+  for (let grade = 1; grade <= 9; grade++) assert.equal(examPlanTrackLabel(`GRADE_${grade}`, null), "—");
+  assert.equal(examPlanTrackLabel("GRADE_10", "EXPERIMENTAL"), "تجربی");
+  assert.equal(examPlanTrackLabel("GRADE_11", "MATHEMATICS_PHYSICS"), "ریاضی فیزیک");
+  assert.equal(examPlanTrackLabel("GRADE_12", "HUMANITIES"), "انسانی");
+});
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
 import indexHtml from "../index.html?raw";
@@ -100,7 +108,9 @@ test("class replacement previews extra payment, preserved discount and student c
 
 test("student class actions include due dates, credit/refund choice, history and manager-only refunds", () => {
   assert.ok(classActionsSource.includes("expected_new_price"));
-  assert.ok(classActionsSource.includes('c.is_active && !enrollment.courses.some'));
+  assert.ok(classActionsSource.includes('c.is_active && c.academic_year === enrollment.academic_year'));
+  assert.ok(classActionsSource.includes('!enrollment.courses.some'));
+  assert.ok(classActionsSource.includes('enrollment.grade ?? student.grade'));
   assert.ok(classActionsSource.includes('method === "CHECK" || method === "INSTALLMENT"'));
   assert.ok(classActionsSource.includes('value="CREDIT"'));
   assert.ok(classActionsSource.includes('value="REFUND"'));
@@ -218,6 +228,12 @@ test("party suggestions include every matching Maryam and exclude unrelated name
 import { expenseMethods, ExpensesPage } from "../src/pages/ExpensesPage";
 import { AuthProvider } from "../src/auth/AuthContext";
 import { ThemeProvider } from "../src/theme/ThemeContext";
+import { academicYearDates } from "../src/components/AcademicYears";
+
+test("academic-year defaults are Mehr 1 through Khordad 31, not Gregorian year boundaries", () => {
+  assert.deepEqual(academicYearDates("1405/1406"), { starts_on: "2026-09-23", ends_on: "2027-06-21" });
+  assert.deepEqual(academicYearDates("1406/1407"), { starts_on: "2027-09-23", ends_on: "2028-06-20" });
+});
 import expenseSource from "../src/pages/ExpensesPage.tsx?raw";
 test("paid expenses have a dedicated purchase menu, filters and immediate-payment guidance", () => {
   assert.deepEqual(Object.keys(expenseMethods), ["CASH", "CHECK", "BANK_TRANSFER"]);
