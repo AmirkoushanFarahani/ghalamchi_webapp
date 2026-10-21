@@ -294,6 +294,8 @@ class Student(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     exam_registered: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
     guardian_full_name: Mapped[str] = mapped_column(String(200))
     guardian_phone: Mapped[str] = mapped_column(String(32))
+    mother_full_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    mother_phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
     address: Mapped[str | None] = mapped_column(String(500), nullable=True)
     previous_school: Mapped[str | None] = mapped_column(String(200), nullable=True)
     emergency_contact: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -629,7 +631,7 @@ class SchoolCost(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ),
         CheckConstraint("amount > 0", name="positive_school_cost_amount"),
         CheckConstraint(
-            "payment_method IN ('CASH','CHECK','BANK_TRANSFER')",
+            "payment_method IN ('CASH','CHECK','BANK_TRANSFER','INSTALLMENT','MIXED')",
             name="valid_school_cost_payment_method",
         ),
     )
@@ -652,3 +654,49 @@ class SchoolCost(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     check_due_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     tracking_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     notes: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    payments: Mapped[list["SchoolCostPayment"]] = relationship(
+        back_populates="cost", cascade="all, delete-orphan", lazy="selectin"
+    )
+
+    @property
+    def amount_paid(self) -> Decimal:
+        return (
+            sum((p.amount for p in self.payments if p.status == "PAID"), Decimal("0"))
+            if self.payments
+            else self.amount
+        )
+
+    @property
+    def balance_due(self) -> Decimal:
+        return max(self.amount - self.amount_paid, Decimal("0"))
+
+
+class SchoolCostPayment(UUIDPrimaryKeyMixin, TimestampMixin, Base):
+    __tablename__ = "school_cost_payments"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('PAID','CANCELLED') OR method NOT IN ('CHECK','INSTALLMENT') "
+            "OR due_date IS NOT NULL",
+            name="scheduled_cost_payment_due_date",
+        ),
+        CheckConstraint("amount > 0", name="positive_cost_payment_amount"),
+        CheckConstraint(
+            "method IN ('CASH','BANK_TRANSFER','CHECK','INSTALLMENT')",
+            name="valid_cost_payment_method",
+        ),
+        CheckConstraint(
+            "status IN ('PENDING','PAID','BOUNCED','CANCELLED')", name="valid_cost_payment_status"
+        ),
+    )
+    cost_id: Mapped[UUID] = mapped_column(
+        ForeignKey("school_costs.id", ondelete="CASCADE"), index=True
+    )
+    recorded_by_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    amount: Mapped[Decimal] = mapped_column(Numeric(18, 2))
+    method: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(20))
+    due_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
+    paid_on: Mapped[date | None] = mapped_column(Date, nullable=True)
+    tracking_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    sayad_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    cost: Mapped[SchoolCost] = relationship(back_populates="payments")

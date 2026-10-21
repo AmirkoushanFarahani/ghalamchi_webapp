@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from backend.app.core.config import Settings
+from backend.app.core.currency import CURRENCY
 from backend.app.db.models import (
     MLModelVersion,
     MLPrediction,
@@ -93,9 +94,7 @@ class MLService:
         target = self.repo.model_by_id(model_id)
         if target is None:
             raise ModelNotFoundError("Model version not found")
-        metadata, digest = self.artifacts.validate(
-            target.pipeline, target.artifact_identifier
-        )
+        metadata, digest = self.artifacts.validate(target.pipeline, target.artifact_identifier)
         if metadata.model_version != target.model_version:
             raise PredictionExecutionError("Registered model metadata is incompatible")
         if metadata.dataset_fingerprint != target.dataset_fingerprint:
@@ -142,6 +141,32 @@ class MLService:
     def _loaded(self, pipeline: str) -> tuple[MLModelVersion, Any]:
         record = self.active_model(pipeline)
         return record, model_cache.get_or_load(record, self.artifacts)
+
+    @staticmethod
+    def _model_money_scale(record: MLModelVersion) -> float:
+        # Installed legacy artifacts were trained in Rial. Do not edit their
+        # binaries/digests or feed Toman values to Rial-trained scalers/forests.
+        currency = record.training_configuration.get("currency", "IRR")
+        if currency not in {"IRR", CURRENCY}:
+            raise PredictionInputError("Unsupported model monetary unit")
+        return 10.0 if currency == "IRR" else 1.0
+
+    @classmethod
+    def _model_money_features(
+        cls, features: dict[str, float], record: MLModelVersion
+    ) -> dict[str, float]:
+        monetary = {
+            "amount",
+            "prior_average_amount",
+            "prior_paid_amount",
+            "outstanding_at_prediction",
+            "total_invoice_amount",
+            "avg_invoice_amount",
+            "total_payment_amount",
+            "outstanding_balance",
+        }
+        scale = cls._model_money_scale(record)
+        return {key: value * scale if key in monetary else value for key, value in features.items()}
 
     def _persist(
         self,
@@ -210,7 +235,9 @@ class MLService:
             invoice_id, invoice.customer_id, float(invoice.total), as_of, actor.id
         )
         record, loaded = self._loaded("payment_delay_risk")
-        result = cast(PaymentRiskModel, loaded).predict(features)
+        result = cast(PaymentRiskModel, loaded).predict(
+            self._model_money_features(features, record)
+        )
         explanation = dict(list(result.feature_contributions.items())[:5])
         value = {
             "risk_category": result.risk_classification,
@@ -228,9 +255,7 @@ class MLService:
         )
         return prediction, {**value, "explanation": explanation, "scope": result.explanation_scope}
 
-    def _allocation_map(
-        self, as_of: date, owner_id: UUID
-    ) -> dict[UUID, list[tuple[date, float]]]:
+    def _allocation_map(self, as_of: date, owner_id: UUID) -> dict[UUID, list[tuple[date, float]]]:
         values: dict[UUID, list[tuple[date, float]]] = defaultdict(list)
         for allocation, payment in self.repo.posted_allocations(as_of, owner_id):
             values[allocation.invoice_id].append((payment.payment_date, float(allocation.amount)))
@@ -285,10 +310,11 @@ class MLService:
     ) -> tuple[MLPrediction, list[dict[str, Any]]]:
         record, loaded = self._loaded("cash_flow_forecast")
         model = cast(CashFlowModel, loaded)
+        scale = self._model_money_scale(record)
         payments = self.repo.posted_payments(as_of, actor.id)
         daily: dict[date, float] = defaultdict(float)
         for payment in payments:
-            daily[payment.payment_date] += float(payment.amount)
+            daily[payment.payment_date] += float(payment.amount) * scale
         adjustment = 0.0
         if daily:
             start = max(min(daily), as_of - timedelta(days=89))
@@ -300,9 +326,9 @@ class MLService:
         serialized = [
             {
                 "date": item.date,
-                "predicted": item.predicted,
-                "lower": item.lower,
-                "upper": item.upper,
+                "predicted": item.predicted / scale,
+                "lower": item.lower / scale,
+                "upper": item.upper / scale,
             }
             for item in points
         ]
@@ -313,6 +339,7 @@ class MLService:
                 "as_of": as_of.isoformat(),
                 "horizon": horizon,
                 "points": serialized,
+                "currency": CURRENCY,
                 "model_version": record.model_version,
             },
             source_type="cash_flow_cutoff",
@@ -351,7 +378,9 @@ class MLService:
         }
         features = {name: raw[name] for name in SEGMENT_FEATURES}
         record, loaded = self._loaded("customer_segmentation")
-        result = cast(SegmentationModel, loaded).predict(features)
+        result = cast(SegmentationModel, loaded).predict(
+            self._model_money_features(features, record)
+        )
         value = {
             "segment": result.segment,
             "behavioral_description": result.description,
@@ -401,7 +430,9 @@ class MLService:
         }
         features = {name: raw[name] for name in SEGMENT_FEATURES}
         record, loaded = self._loaded("customer_segmentation")
-        result = cast(SegmentationModel, loaded).predict(features)
+        result = cast(SegmentationModel, loaded).predict(
+            self._model_money_features(features, record)
+        )
         value = {
             "segment": result.segment,
             "behavioral_description": result.description,
@@ -417,9 +448,7 @@ class MLService:
         )
         return prediction, value
 
-    def predictions(
-        self, actor: User, pipeline: str | None = None
-    ) -> list[MLPrediction]:
+    def predictions(self, actor: User, pipeline: str | None = None) -> list[MLPrediction]:
         return self.repo.predictions(actor.id, pipeline)
 
     def prediction(self, prediction_id: UUID, actor: User) -> MLPrediction:

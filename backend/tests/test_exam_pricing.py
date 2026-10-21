@@ -48,7 +48,7 @@ def test_workbook_dates_prices_and_repeat_import(client: TestClient) -> None:
         and p["academic_track"] == "EXPERIMENTAL"
     )
     assert price["exam_count"] == 25
-    assert Decimal(price["exam_total"]) == 15_000_000
+    assert Decimal(price["exam_total"]) == 1_500_000
     with SessionLocal.begin() as session:
         school = session.scalar(select(SchoolInstitute))
         assert school is not None

@@ -3,6 +3,7 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
+from backend.app.core.currency import AUDIT_AMOUNT_KEYS, CURRENCY
 from backend.app.db.models import AuditEvent
 
 SENSITIVE_AUDIT_KEYS = {
@@ -44,6 +45,8 @@ class AuditRepository:
     ) -> AuditEvent:
         if details is not None and _contains_sensitive_key(details):
             raise ValueError("Sensitive values are not permitted in audit metadata")
+        if details and AUDIT_AMOUNT_KEYS.intersection(details):
+            details = {**details, "currency": CURRENCY}
         event = AuditEvent(
             action=action,
             resource_type=resource_type,

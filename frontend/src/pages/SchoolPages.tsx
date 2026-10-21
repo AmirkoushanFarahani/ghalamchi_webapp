@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { AcademicYearField, INITIAL_ACADEMIC_YEAR } from "../components/AcademicYears";
+import { PaymentPlanEditor, newPaymentPlan, paymentPlanPayload } from "../components/PaymentPlanEditor";
 import { useAuth } from "../auth/AuthContext";
 import {
   DateField,
@@ -455,7 +456,7 @@ function CourseForm({
           <input name="instructor_name" defaultValue={course?.instructor_name ?? ""} placeholder="مثلاً خانم احمدی" />
         </Field>
         <GradeField value={grade} onChange={setGrade} />
-        <Field label="شهریه (ریال)">
+        <Field label="شهریه (تومان)">
           <MoneyInput value={price} onValueChange={setPrice} required min="0" />
         </Field>
         <Field label="تعداد جلسات کلاس (برای محاسبه لغو)">
@@ -516,10 +517,10 @@ function SpecialSupportForm({
         <Field label="نام پشتیبان">
           <input name="name" required defaultValue={support?.name} placeholder="مثلاً پشتیبان ریاضی" />
         </Field>
-        <Field label="قیمت یک ماه (ریال)">
+        <Field label="قیمت یک ماه (تومان)">
           <MoneyInput value={monthlyPrice} onValueChange={setMonthlyPrice} min="0" required />
         </Field>
-        <Field label="قیمت یک فصل، مانند تابستان یا زمستان (ریال)">
+        <Field label="قیمت یک فصل، مانند تابستان یا زمستان (تومان)">
           <MoneyInput value={seasonalPrice} onValueChange={setSeasonalPrice} min="0" required />
         </Field>
         {support && <label className="check"><input name="is_active" type="checkbox" defaultChecked={support.is_active} /> پشتیبان فعال است</label>}
@@ -618,16 +619,16 @@ function ExamPlanForm({
           </Field>
         </div>
         <div className="form-grid form-grid--2">
-          <Field label="مبلغ هر آزمون (ریال)">
+          <Field label="مبلغ هر آزمون (تومان)">
             <MoneyInput value={unitPrice} onValueChange={setUnitPrice} min="0" required />
           </Field>
-          <Field label="مبلغ کل آزمون‌ها (ریال)">
+          <Field label="مبلغ کل آزمون‌ها (تومان)">
             <MoneyInput value={examTotal} onValueChange={setExamTotal} min="0" required />
           </Field>
-          <Field label="مبلغ بن کتاب (ریال)">
+          <Field label="مبلغ بن کتاب (تومان)">
             <MoneyInput value={voucherAmount} onValueChange={setVoucherAmount} min="0" required />
           </Field>
-          <Field label="تخفیف بن کتاب (ریال)">
+          <Field label="تخفیف بن کتاب (تومان)">
             <MoneyInput value={voucherDiscount} onValueChange={setVoucherDiscount} min="0" required />
           </Field>
         </div>
@@ -761,10 +762,10 @@ function RegistrationFeesForm({
         <p className="form-description">
           فقط مدیر قیمت کتاب و ثبت‌نام آزمون را تعیین می‌کند. مسئول ثبت‌نام فقط انتخاب می‌کند که دانش‌آموز هر مورد را می‌خواهد یا نه.
         </p>
-        <Field label="قیمت کتاب (ریال)">
+        <Field label="قیمت کتاب (تومان)">
           <MoneyInput value={bookPrice} onValueChange={setBookPrice} min="0" required />
         </Field>
-        <Field label="قیمت ثبت‌نام آزمون (ریال)">
+        <Field label="قیمت ثبت‌نام آزمون (تومان)">
           <MoneyInput value={examPrice} onValueChange={setExamPrice} min="0" required />
         </Field>
         <div className="form-actions">
@@ -908,10 +909,8 @@ export function FourSectionStudentRegistrationForm({
   const [supportId, setSupportId] = useState("");
   const [supportPeriod, setSupportPeriod] = useState<"MONTHLY" | "SEASONAL">("MONTHLY");
   const [selectedCourses, setSelectedCourses] = useState<string[]>([]);
-  const [paymentMethod, setPaymentMethod] = useState<"CASH" | "BANK_TRANSFER" | "CHECK" | "INSTALLMENT">("CASH");
-  const [installmentCount, setInstallmentCount] = useState(1);
-  const [firstInstallmentDate, setFirstInstallmentDate] = useState(todayIso());
-  const [checkDueDate, setCheckDueDate] = useState(todayIso());
+  const [paymentPlan, setPaymentPlan] = useState(newPaymentPlan);
+  const [planValid, setPlanValid] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const allCourses = useAsync(() => api.get<Course[]>("/school/courses"), []);
@@ -948,7 +947,6 @@ export function FourSectionStudentRegistrationForm({
     : 0;
   const total = classTotal + bookPrice + examPrice + specialSupportPrice;
   const needsAcademicTrack = ["GRADE_10", "GRADE_11", "GRADE_12"].includes(grade);
-  const schedule = useMemo(() => buildInstallmentSchedule(total, installmentCount, firstInstallmentDate), [total, installmentCount, firstInstallmentDate]);
 
   function toggleCourse(courseId: string) {
     setSelectedCourses((current) => current.includes(courseId) ? current.filter((id) => id !== courseId) : [...current, courseId]);
@@ -961,7 +959,7 @@ export function FourSectionStudentRegistrationForm({
       setExistingStudent(found);
       if (!found) { setLookupMessage("دانش‌آموزی با این کد ملی در این آموزشگاه نیست؛ اطلاعات جدید را وارد کنید."); return; }
       const [first, ...last] = found.full_name.split(" ");
-      const values: Record<string, string> = { first_name: first, last_name: last.join(" "), student_phone: found.student_phone ?? "", guardian_full_name: found.guardian_full_name, guardian_phone: found.guardian_phone, address: found.address ?? "", previous_school: found.previous_school ?? "", emergency_contact: found.emergency_contact ?? "", notes: found.notes ?? "" };
+      const values: Record<string, string> = { first_name: first, last_name: last.join(" "), student_phone: found.student_phone ?? "", guardian_full_name: found.guardian_full_name, guardian_phone: found.guardian_phone, mother_full_name: found.mother_full_name ?? "", mother_phone: found.mother_phone ?? "", address: found.address ?? "", previous_school: found.previous_school ?? "", emergency_contact: found.emergency_contact ?? "", notes: found.notes ?? "" };
       for (const [key, value] of Object.entries(values)) {
         const field = formRef.current?.elements.namedItem(key);
         if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) field.value = value;
@@ -988,15 +986,12 @@ export function FourSectionStudentRegistrationForm({
     if (selectedCourses.length !== chosenCourses.length) missing.push("انتخاب دوباره کلاس‌های فعال پایه دانش‌آموز");
     if (needsAcademicTrack && !academicTrack) missing.push("رشته تحصیلی");
     if ((examIncluded || bookIncluded) && !examPlanId) missing.push("طرح آزمون");
-    if (!String(form.get("guardian_full_name") ?? "").trim()) missing.push("نام ولی");
-    if (!String(form.get("guardian_phone") ?? "").trim()) missing.push("تلفن ولی");
+    if (!String(form.get("guardian_full_name") ?? "").trim()) missing.push("نام پدر");
+    if (!String(form.get("guardian_phone") ?? "").trim()) missing.push("تلفن پدر");
     if (missing.length) {
       setError(`لطفاً این موارد را تکمیل کنید: ${missing.join("، ")}`);
       return;
     }
-    const payments = total <= 0 ? [] : paymentMethod === "INSTALLMENT"
-      ? schedule.map((item) => ({ amount: item.amount, method: "INSTALLMENT", due_date: item.due_date, tracking_code: null, sayad_id: null }))
-      : [{ amount: total.toFixed(2), method: paymentMethod, due_date: paymentMethod === "CHECK" ? checkDueDate : null, tracking_code: String(form.get("tracking_code") || "") || null, sayad_id: paymentMethod === "CHECK" ? String(form.get("sayad_id") || "") || null : null }];
     setBusy(true);
     setError("");
     try {
@@ -1017,13 +1012,15 @@ export function FourSectionStudentRegistrationForm({
           : null,
         guardian_full_name: form.get("guardian_full_name"),
         guardian_phone: form.get("guardian_phone"),
+        mother_full_name: form.get("mother_full_name") || null,
+        mother_phone: form.get("mother_phone") || null,
         address: form.get("address") || null,
         previous_school: form.get("previous_school") || null,
         emergency_contact: form.get("emergency_contact") || null,
         notes: form.get("notes") || null,
         course_ids: chosenCourses.map((course) => course.id),
         discount_code: form.get("discount_code") || null,
-        payments,
+        payment_plan: paymentPlanPayload(paymentPlan, total),
       });
       saved();
     } catch (reason) {
@@ -1045,14 +1042,16 @@ export function FourSectionStudentRegistrationForm({
           <div className="form-grid form-grid--3">
             <Field label="نام"><input name="first_name" required disabled={busy} readOnly={!!existingStudent} /></Field>
             <Field label="نام خانوادگی"><input name="last_name" required disabled={busy} readOnly={!!existingStudent} /></Field>
-            <Field label="کد ملی"><input name="national_id" value={nationalId} onChange={(e) => { setNationalId(e.target.value); if (existingStudent) { for (const key of ["first_name", "last_name", "student_phone", "guardian_full_name", "guardian_phone", "address", "previous_school", "emergency_contact", "notes"]) { const field = formRef.current?.elements.namedItem(key); if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) field.value = ""; } setBirthDate(""); } setExistingStudent(null); setLookupMessage(""); }} dir="ltr" required disabled={busy || lookupBusy} /><button type="button" className="button button--secondary button--small" disabled={busy || lookupBusy || !nationalId.trim()} onClick={() => void lookupStudent()}>{lookupBusy ? "در حال بازیابی…" : "بازیابی اطلاعات"}</button></Field>
+            <Field label="کد ملی"><input name="national_id" value={nationalId} onChange={(e) => { setNationalId(e.target.value); if (existingStudent) { for (const key of ["first_name", "last_name", "student_phone", "guardian_full_name", "guardian_phone", "mother_full_name", "mother_phone", "address", "previous_school", "emergency_contact", "notes"]) { const field = formRef.current?.elements.namedItem(key); if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) field.value = ""; } setBirthDate(""); } setExistingStudent(null); setLookupMessage(""); }} dir="ltr" required disabled={busy || lookupBusy} /><button type="button" className="button button--secondary button--small" disabled={busy || lookupBusy || !nationalId.trim()} onClick={() => void lookupStudent()}>{lookupBusy ? "در حال بازیابی…" : "بازیابی اطلاعات"}</button></Field>
             <Field label="تلفن دانش‌آموز (اختیاری)"><input name="student_phone" dir="ltr" disabled={busy} readOnly={!!existingStudent} /></Field>
             {existingStudent ? <Field label="تاریخ تولد"><DateText value={birthDate} /></Field> : <DateField label="تاریخ تولد" value={birthDate} onChange={setBirthDate} required />}
             <DateField label="تاریخ ثبت‌نام" value={registrationDate} onChange={(value) => { setRegistrationDate(value); setExamPlanId(""); }} required />
             <GradeField value={grade} onChange={(value) => { setGrade(value); setSelectedCourses([]); setAcademicTrack(""); setExamPlanId(""); }} />
             {needsAcademicTrack && <Field label="رشته تحصیلی"><select value={academicTrack} onChange={(event) => { setAcademicTrack(event.target.value); setExamPlanId(""); }} required disabled={busy}><option value="">انتخاب رشته</option>{Array.from(new Set((examPlans.data ?? []).filter((plan) => plan.grade === grade && plan.academic_track).map((plan) => plan.academic_track as string))).map((track) => <option key={track} value={track}>{academicTrackLabels[track] ?? track}</option>)}</select></Field>}
-            <Field label="نام ولی"><input name="guardian_full_name" required disabled={busy} readOnly={!!existingStudent} /></Field>
-            <Field label="تلفن ولی"><input name="guardian_phone" dir="ltr" required disabled={busy} readOnly={!!existingStudent} /></Field>
+            <Field label="نام پدر"><input name="guardian_full_name" required disabled={busy} readOnly={!!existingStudent} /></Field>
+            <Field label="تلفن پدر"><input name="guardian_phone" dir="ltr" required disabled={busy} readOnly={!!existingStudent} /></Field>
+            <Field label="نام و نام خانوادگی مادر (اختیاری)"><input name="mother_full_name" maxLength={200} disabled={busy} readOnly={!!existingStudent} /></Field>
+            <Field label="شماره تماس مادر (اختیاری)"><input name="mother_phone" dir="ltr" maxLength={32} disabled={busy} readOnly={!!existingStudent} /></Field>
           </div>
           <div className="form-grid form-grid--2">
             <Field label="مدرسه قبلی (اختیاری)"><input name="previous_school" disabled={busy} readOnly={!!existingStudent} /></Field>
@@ -1066,7 +1065,7 @@ export function FourSectionStudentRegistrationForm({
           <h2 className="card-title">۲. آزمون و کتاب</h2>
           <Field label="بازه قیمت آزمون و بن کتاب"><select value={registrationExamPeriod} onChange={(event) => { setRegistrationExamPeriod(event.target.value); setExamPlanId(""); }} disabled={busy || registrationPeriods.loading}><option value="current">بازه مناسب پایه و تاریخ ثبت‌نام</option>{(registrationPeriods.data ?? []).map((period) => <option key={period.id} value={period.id}>{examPeriodLabel(period)}</option>)}<option value="legacy">تعرفه‌های قبلی بدون تاریخ</option></select></Field>
           {registrationPeriods.error && <ErrorState message={registrationPeriods.error} retry={registrationPeriods.reload} />}
-          {examPlans.loading ? <LoadingState /> : examPlans.error ? <ErrorState message={examPlans.error} retry={examPlans.reload} /> : <><Field label="طرح آزمون و بن کتاب"><select value={examPlanId} onChange={(event) => setExamPlanId(event.target.value)} disabled={busy || !grade || (needsAcademicTrack && !academicTrack)}><option value="">انتخاب طرح</option>{availableExamPlans.map((plan) => <option key={plan.id} value={plan.id}>طرح {plan.plan_code} · {plan.exam_count} آزمون · مبلغ آزمون {Number(plan.exam_total).toLocaleString("en-US")} ریال</option>)}</select></Field>{grade && !needsAcademicTrack && !availableExamPlans.length && <p className="alert alert--warning">برای این پایه طرح آزمون پیش‌فرض وجود ندارد.</p>}<div className="form-grid form-grid--2">
+          {examPlans.loading ? <LoadingState /> : examPlans.error ? <ErrorState message={examPlans.error} retry={examPlans.reload} /> : <><Field label="طرح آزمون و بن کتاب"><select value={examPlanId} onChange={(event) => setExamPlanId(event.target.value)} disabled={busy || !grade || (needsAcademicTrack && !academicTrack)}><option value="">انتخاب طرح</option>{availableExamPlans.map((plan) => <option key={plan.id} value={plan.id}>طرح {plan.plan_code} · {plan.exam_count} آزمون · مبلغ آزمون {Number(plan.exam_total).toLocaleString("en-US")} تومان</option>)}</select></Field>{grade && !needsAcademicTrack && !availableExamPlans.length && <p className="alert alert--warning">برای این پایه طرح آزمون پیش‌فرض وجود ندارد.</p>}<div className="form-grid form-grid--2">
             <label className="course-choice"><input type="checkbox" checked={examIncluded} onChange={(event) => setExamIncluded(event.target.checked)} disabled={busy || !examPlanId} /><span><strong>ثبت‌نام آزمون</strong><small>مبلغ طرح انتخاب‌شده</small></span><Money value={examPrice} /></label>
             <label className="course-choice"><input type="checkbox" checked={bookIncluded} onChange={(event) => setBookIncluded(event.target.checked)} disabled={busy || !examPlanId} /><span><strong>شامل بن کتاب</strong><small>{selectedExamPlan ? `بن ${Number(selectedExamPlan.book_voucher_amount).toLocaleString("en-US")} − تخفیف ${Number(selectedExamPlan.book_voucher_discount).toLocaleString("en-US")}` : "ابتدا طرح را انتخاب کنید"}</small></span><Money value={bookPrice} /></label>
           </div></>}
@@ -1101,13 +1100,10 @@ export function FourSectionStudentRegistrationForm({
 
         <section className="card">
           <h2 className="card-title">۴. پرداخت</h2>
-          <Field label="روش پرداخت"><select value={paymentMethod} onChange={(event) => setPaymentMethod(event.target.value as typeof paymentMethod)} disabled={busy}><option value="CASH">نقدی</option><option value="BANK_TRANSFER">انتقال بانکی</option><option value="CHECK">چک</option><option value="INSTALLMENT">اقساطی</option></select></Field>
-          {paymentMethod === "INSTALLMENT" && <><Field label="تعداد اقساط"><input type="number" min="1" max="60" value={installmentCount} onChange={(event) => setInstallmentCount(Math.max(1, Math.min(60, Number(event.target.value) || 1)))} required disabled={busy} /></Field><DateField label="تاریخ سررسید قسط اول" value={firstInstallmentDate} onChange={setFirstInstallmentDate} required /><div className="table-wrap"><table><thead><tr><th>قسط</th><th>مبلغ</th><th>سررسید</th></tr></thead><tbody>{schedule.map((item, index) => <tr key={item.due_date}><td>{index + 1}</td><td><Money value={item.amount} /></td><td><DateText value={item.due_date} /></td></tr>)}</tbody></table></div></>}
-          {paymentMethod === "CHECK" && <><DateField label="تاریخ سررسید چک" value={checkDueDate} onChange={setCheckDueDate} required /><Field label="شناسه صیادی (اختیاری)"><input name="sayad_id" dir="ltr" maxLength={32} disabled={busy} /></Field></>}
-          {(paymentMethod === "CASH" || paymentMethod === "BANK_TRANSFER" || paymentMethod === "CHECK") && <><Field label="کد پیگیری (اختیاری)"><input name="tracking_code" dir="ltr" maxLength={100} disabled={busy} /></Field><p className="allocation-total">مبلغ پرداخت: <Money value={total} /></p></>}
+          <PaymentPlanEditor total={total} value={paymentPlan} onChange={setPaymentPlan} anchorDate={registrationDate} disabled={busy} onValid={setPlanValid} />
         </section>
         {error && <p className="alert alert--error">{error}</p>}
-        <button className="button button--primary" disabled={busy}>{busy ? "در حال ذخیره…" : "ثبت‌نام و صدور فاکتور"}</button>
+        <button className="button button--primary" disabled={busy || !planValid}>{busy ? "در حال ذخیره…" : "ثبت‌نام و صدور فاکتور"}</button>
       </form>
     </Modal>
   );
@@ -1228,6 +1224,8 @@ function StudentRegistrationForm({
         exam_registered: examRegistered,
         guardian_full_name: form.get("guardian_full_name"),
         guardian_phone: form.get("guardian_phone"),
+        mother_full_name: form.get("mother_full_name") || null,
+        mother_phone: form.get("mother_phone") || null,
         address: form.get("address") || null,
         previous_school: form.get("previous_school") || null,
         emergency_contact: form.get("emergency_contact") || null,
@@ -1323,7 +1321,7 @@ function StudentRegistrationForm({
         <section className="card">
           <h2 className="card-title">اطلاعات ولی و تماس</h2>
           <div className="form-grid form-grid--2">
-            <Field label="نام و نام خانوادگی ولی">
+            <Field label="نام و نام خانوادگی پدر">
               <input name="guardian_full_name" required />
             </Field>
             <Field label="تلفن همراه ولی">
@@ -1687,10 +1685,10 @@ function EnrollmentForm({
               setSelected([]);
             }}
           />
-          <Field label="نام ولی">
+          <Field label="نام پدر">
             <input name="guardian_full_name" required />
           </Field>
-          <Field label="تلفن ولی">
+          <Field label="تلفن پدر">
             <input name="guardian_phone" dir="ltr" required />
           </Field>
           <Field label="مدرسه قبلی (اختیاری)">

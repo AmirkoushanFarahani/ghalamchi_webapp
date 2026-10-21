@@ -1617,7 +1617,7 @@ function PaymentCreate({
             onChange={setDate}
             required
           />
-          <Field label="مبلغ دریافت (ریال)">
+          <Field label="مبلغ دریافت (تومان)">
             <MoneyInput
               min="0.01"
               value={amount}

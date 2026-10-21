@@ -881,7 +881,7 @@ function BillPaymentCreate({
             onChange={setPaymentDate}
             required
           />
-          <Field label="مبلغ پرداخت (ریال)">
+          <Field label="مبلغ پرداخت (تومان)">
             <MoneyInput name="amount" min="0.01" required disabled={busy} />
           </Field>
           <Field label="شماره مرجع">

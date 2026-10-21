@@ -27,6 +27,7 @@ try {
     let data = ({ "academic-years": years, courses, "exam-plans": plans, "special-supports": [], "exam-pricing-periods": periods })[path];
     if (path === "student-lookup") data = { id: "student1", full_name: "دانش‌آموز آزمایشی", birth_date: "2015-01-01", guardian_full_name: "ولی آزمایشی", guardian_phone: "09120000000", enrollments: [] };
     if (path === "enroll") { submitted = route.request().postDataJSON(); data = {}; }
+    if (path === "preview") { const body = route.request().postDataJSON(); data = { total: body.total, immediate: body.total, scheduled: "0", items: body.plan.items }; }
     assert.notEqual(data, undefined, path);
     await route.fulfill({ json: data });
   });
@@ -41,7 +42,8 @@ try {
   await page.getByRole("button", { name: "بازیابی اطلاعات", exact: true }).click();
   await page.getByRole("status").filter({ hasText: "اطلاعات پرونده قبلی" }).waitFor();
   assert.equal(await page.getByLabel("نام", { exact: true }).inputValue(), "دانش‌آموز");
-  assert.equal(await page.getByLabel("نام ولی", { exact: true }).inputValue(), "ولی آزمایشی");
+  assert.equal(await page.getByLabel("نام پدر", { exact: true }).inputValue(), "ولی آزمایشی");
+  assert.equal(await page.getByLabel("نام و نام خانوادگی مادر (اختیاری)", { exact: true }).inputValue(), "");
   await year.selectOption("1406/1407");
   await select("پایه تحصیلی").selectOption("GRADE_5");
   await page.getByText("کلاس سال آینده", { exact: true }).waitFor();
@@ -57,7 +59,9 @@ try {
   assert.equal(submitted.grade, "GRADE_5");
   assert.deepEqual(submitted.course_ids, ["class2"]);
   assert.equal(submitted.national_id, "0250155710");
-  assert.equal(submitted.payments[0].amount, "2000000.00");
+  assert.equal(Number(submitted.payment_plan.items[0].amount), 2000000);
+  assert.equal(submitted.mother_full_name, null);
+  assert.equal(submitted.mother_phone, null);
   assert.deepEqual(errors, []);
   console.log("PASS: year/grade class filtering, year-specific exams, national-ID prefill, future-year registration payload and pricing");
 } finally { await browser?.close(); await new Promise((resolve) => server.close(resolve)); }

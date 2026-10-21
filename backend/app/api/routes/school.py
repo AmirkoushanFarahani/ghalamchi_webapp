@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from backend.app.api.dependencies import require_permission
 from backend.app.api.routes.auth import enforce_auth_rate_limit
 from backend.app.core.config import Settings, get_settings
+from backend.app.core.persian_calendar import today_in_tehran
 from backend.app.db.database import get_db
 from backend.app.db.models import (
     DiscountCode,
@@ -27,6 +28,7 @@ from backend.app.ml.registry import (
     PredictionExecutionError,
     PredictionInputError,
 )
+from backend.app.schemas.payment_plan import PaymentPlanPreview, PaymentPlanRead, PaymentPlanReplace
 from backend.app.schemas.school import (
     AcademicYearCreate,
     AcademicYearRead,
@@ -74,10 +76,12 @@ from backend.app.schemas.school import (
     StudentEnrollmentCreate,
     StudentRead,
     StudentSegmentationRead,
+    StudentUpdate,
     SupportChangeCreate,
     SupportChangeRead,
 )
 from backend.app.services.ml import MLService
+from backend.app.services.payment_plans import build_payment_plan
 from backend.app.services.school import SchoolConflictError, SchoolError, SchoolService
 
 router = APIRouter(prefix="/school")
@@ -86,6 +90,78 @@ SessionDep = Annotated[Session, Depends(get_db)]
 
 def service(session: Session, actor: User) -> SchoolService:
     return SchoolService(session, actor)
+
+
+@router.post("/payment-plan/preview", response_model=PaymentPlanRead)
+def preview_payment_plan(
+    data: PaymentPlanPreview,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:read"))],
+) -> PaymentPlanRead:
+    service(session, actor)  # Assignment/workspace must be valid even for a preview.
+    try:
+        rows = build_payment_plan(data.total, data.plan, data.anchor_date or today_in_tehran())
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    immediate = sum((r.amount for r in rows if r.method in {"CASH", "BANK_TRANSFER"}), Decimal("0"))
+    return PaymentPlanRead(
+        total=data.total, immediate=immediate, scheduled=data.total - immediate, items=rows
+    )
+
+
+@router.put(
+    "/students/{student_id}/enrollments/{enrollment_id}/payment-plan", response_model=StudentRead
+)
+def replace_student_payment_plan(
+    student_id: UUID,
+    enrollment_id: UUID,
+    data: PaymentPlanReplace,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:payments"))],
+) -> StudentRead:
+    try:
+        return student_read(
+            service(session, actor).replace_enrollment_plan(student_id, enrollment_id, data)
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.put("/costs/{cost_id}/payment-plan", response_model=SchoolCostRead)
+def replace_cost_payment_plan(
+    cost_id: UUID,
+    data: PaymentPlanReplace,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolCostRead:
+    try:
+        return SchoolCostRead.model_validate(
+            service(session, actor).replace_cost_plan(cost_id, data)
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+
+@router.patch("/costs/{cost_id}/payments/{payment_id}", response_model=SchoolCostRead)
+def settle_cost_payment(
+    cost_id: UUID,
+    payment_id: UUID,
+    data: PaymentStatusUpdate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:manage"))],
+) -> SchoolCostRead:
+    try:
+        return SchoolCostRead.model_validate(
+            service(session, actor).update_cost_payment(cost_id, payment_id, data)
+        )
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 def student_read(student: Student) -> StudentRead:
@@ -103,6 +179,8 @@ def student_read(student: Student) -> StudentRead:
         exam_registered=student.exam_registered,
         guardian_full_name=student.guardian_full_name,
         guardian_phone=student.guardian_phone,
+        mother_full_name=student.mother_full_name,
+        mother_phone=student.mother_phone,
         address=student.address,
         previous_school=student.previous_school,
         emergency_contact=student.emergency_contact,
@@ -632,6 +710,21 @@ def list_students(
     return [student_read(student) for student in service(session, actor).list_students()]
 
 
+@router.patch("/students/{student_id}", response_model=StudentRead)
+def edit_student(
+    student_id: UUID,
+    data: StudentUpdate,
+    session: SessionDep,
+    actor: Annotated[User, Depends(require_permission("school:enroll"))],
+) -> StudentRead:
+    try:
+        return student_read(service(session, actor).update_student(student_id, data))
+    except SchoolConflictError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    except SchoolError as exc:
+        raise HTTPException(404, "پرونده دانش‌آموز در دسترس نیست.") from exc
+
+
 @router.get("/students/{student_id}", response_model=StudentRead)
 def get_student(
     student_id: UUID,
@@ -655,6 +748,8 @@ def list_school_costs(
         raise HTTPException(422, "Start date must not be after end date")
     rows = service(session, actor).list_costs(start_date, end_date)
     return SchoolCostList(
+        total_paid=sum((row.amount_paid for row in rows), Decimal("0")),
+        total_outstanding=sum((row.balance_due for row in rows), Decimal("0")),
         items=[SchoolCostRead.model_validate(row) for row in rows],
         total=sum((row.amount for row in rows), Decimal("0")),
     )
@@ -863,7 +958,7 @@ def segment_student_for_school_accounting(
     try:
         service(session, actor).get_student(student_id)
         prediction, value = MLService(session, settings).segment_student(
-            student_id, date.today(), actor
+            student_id, today_in_tehran(), actor
         )
     except ModelNotFoundError as exc:
         raise HTTPException(404, str(exc)) from exc
@@ -875,5 +970,5 @@ def segment_student_for_school_accounting(
         behavioral_description=str(value["behavioral_description"]),
         model_version=str(value["model_version"]),
         prediction_timestamp=prediction.predicted_at,
-        as_of=date.today(),
+        as_of=today_in_tehran(),
     )

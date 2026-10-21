@@ -232,10 +232,10 @@ def main():
             item = api(f"/journals/{item['id']}/post", {})
         return item
 
-    journal("DEMO-OPENING", "سرمایه اولیه آزمایشی", 500000000)
-    reversible = journal("DEMO-REVERSAL", "نمونه سند قابل برگشت", 200000)
+    journal("DEMO-OPENING", "سرمایه اولیه آزمایشی", 50000000)
+    reversible = journal("DEMO-REVERSAL", "نمونه سند قابل برگشت", 20000)
     api(f"/journals/{reversible['id']}/reverse", {})
-    journal("DEMO-DRAFT", "پیش‌نویس بدون اثر مالی", 900000, False)
+    journal("DEMO-DRAFT", "پیش‌نویس بدون اثر مالی", 90000, False)
 
     names = [
         "علی رضایی",
@@ -279,7 +279,7 @@ def main():
                 "name": name,
                 "description": "کالا یا خدمت ساختگی برای تست",
                 "unit": unit,
-                "unit_price": str(250000 * i),
+                "unit_price": str(25000 * i),
             },
         )
         for i, name in enumerate(
@@ -295,7 +295,7 @@ def main():
     invoices = []
     for i in range(24):
         issued_on = max(date(today.year, 1, 1), today - timedelta(days=85 - i * 3))
-        price = Decimal(500000 + i * 125000)
+        price = Decimal(50000 + i * 12500)
         quantity = 1 + i % 3
         subtotal = price * quantity
         tax = subtotal / 10 if i % 3 == 0 else Decimal(0)
@@ -350,7 +350,7 @@ def main():
     for i, invoice in enumerate(invoices[:11]):
         total = money(invoice["total"])
         allocation = total if i < 5 else total / 2
-        amount = allocation + (Decimal(200000) if i == 4 else Decimal(0))
+        amount = allocation + (Decimal(20000) if i == 4 else Decimal(0))
         payment = api(
             "/payments",
             {
@@ -411,8 +411,8 @@ def main():
                         "description": "خرید آزمایشی " + products[i % 8]["name"],
                         "product_id": products[i % 8]["id"],
                         "quantity": "2",
-                        "unit_price": str(200000 + i * 50000),
-                        "tax": "40000" if i % 2 == 0 else "0",
+                        "unit_price": str(20000 + i * 5000),
+                        "tax": "4000" if i % 2 == 0 else "0",
                     }
                 ],
             },
@@ -587,7 +587,8 @@ def main():
                 "customer_balance_directions": dict(
                     Counter(x["balance_direction"] for x in summaries)
                 ),
-                "expected_rials": {k: str(v) for k, v in expected.items()},
+                "currency": "TOMAN",
+                "expected_toman": {k: str(v) for k, v in expected.items()},
                 "reports_verified": True,
                 "active_ml_models": len(active),
                 "ml_results": ml_results,

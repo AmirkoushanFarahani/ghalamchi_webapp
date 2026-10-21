@@ -1,9 +1,12 @@
 export type UUID = string;
+export interface EnrollmentPayment { paid_on?: string | null }
+export interface SchoolComparison { costs_paid?: Money; cost_debt?: Money }
 // Optional fields support older exported fixtures; the current API always sends them.
 export interface Course { academic_year?: string }
 export interface ExamPlan { academic_year?: string }
 export interface ExamPricingPeriod { academic_year?: string }
 export interface Enrollment { academic_year?: string; grade?: string | null; academic_track?: string | null; registration_date?: string | null }
+/** Decimal Toman amount. Never apply a Rial conversion to API values. */
 export type Money = string;
 export type PipelineName = "transaction_classification" | "payment_delay_risk" | "cash_flow_forecast" | "customer_segmentation";
 export type BusinessCategory = "RETAIL" | "EDUCATION" | "ONLINE" | "SERVICES";
@@ -26,6 +29,7 @@ export interface ServiceCancellation { id: UUID; service_type: "COURSE" | "EXAM"
 export interface SupportChange { id: UUID; old_name: string | null; old_period: "MONTHLY" | "SEASONAL" | null; old_price: Money; new_name: string; new_period: "MONTHLY" | "SEASONAL"; new_price: Money; old_total: Money; new_total: Money; reason: string; created_at: string }
 export interface Enrollment { id: UUID; subtotal: Money; discount_amount: Money; book_price: Money; exam_price: Money; exam_session_count: number; special_support_name: string | null; special_support_period: "MONTHLY" | "SEASONAL" | null; special_support_price: Money; total_amount: Money; amount_paid: Money; balance_due: Money; credit_balance?: Money; class_changes?: ClassChange[]; attendance_records?: AttendanceRecord[]; service_cancellations?: ServiceCancellation[]; support_changes?: SupportChange[]; status: string; courses: EnrollmentCourse[]; payments: EnrollmentPayment[] }
 export interface Student { id: UUID; full_name: string; national_id: string; student_phone: string | null; birth_date: string; registration_date: string; first_exam_date: string | null; grade: SchoolGrade; academic_track: string | null; book_voucher_eligible: boolean; exam_registered: boolean; guardian_full_name: string; guardian_phone: string; address: string | null; previous_school: string | null; emergency_contact: string | null; notes: string | null; created_by_id: UUID; enrollments: Enrollment[] }
+export interface Student { mother_full_name?: string | null; mother_phone?: string | null }
 export interface RegisterRequest { email?: string | null; phone_number?: string | null; password: string; first_name: string; last_name: string; business_category?: BusinessCategory }
 export interface Party { id: UUID; name: string; email: string | null; phone: string | null; address: string | null; is_customer: boolean; is_supplier: boolean; is_active: boolean; created_at: string; updated_at: string }
 export interface Product { id: UUID; sku: string; name: string; description: string | null; unit: string; unit_price: Money; is_active: boolean; created_at: string; updated_at: string }

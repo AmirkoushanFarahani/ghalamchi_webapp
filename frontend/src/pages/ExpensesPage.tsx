@@ -220,7 +220,7 @@ function ExpenseForm({
             placeholder="مثلاً هزینه برق"
           />
         </Field>
-        <Field label="مبلغ هزینه (ریال)">
+        <Field label="مبلغ هزینه (تومان)">
           <MoneyInput
             value={amount}
             onValueChange={setAmount}

@@ -334,9 +334,9 @@ def test_manager_registration_fees_are_added_to_optional_student_services(
     exam_plans = client.get("/api/v1/school/exam-plans?grade=GRADE_7", headers=employee)
     assert exam_plans.status_code == 200
     plan = next(item for item in exam_plans.json() if item["plan_code"] == "0215")
-    assert plan["exam_total"] == "10400000.00"
-    assert plan["book_voucher_amount"] == "2000000.00"
-    assert plan["book_voucher_discount"] == "300000.00"
+    assert plan["exam_total"] == "1040000.00"
+    assert plan["book_voucher_amount"] == "200000.00"
+    assert plan["book_voucher_discount"] == "30000.00"
 
     course = client.post(
         "/api/v1/school/courses",
@@ -366,10 +366,10 @@ def test_manager_registration_fees_are_added_to_optional_student_services(
     )
     assert enrolled.status_code == 201
     enrollment = enrolled.json()["enrollments"][0]
-    assert enrollment["book_price"] == "1700000.00"
-    assert enrollment["exam_price"] == "10400000.00"
-    assert enrollment["subtotal"] == "12101000.00"
-    assert enrollment["total_amount"] == "12101000.00"
+    assert enrollment["book_price"] == "170000.00"
+    assert enrollment["exam_price"] == "1040000.00"
+    assert enrollment["subtotal"] == "1211000.00"
+    assert enrollment["total_amount"] == "1211000.00"
     assert len(enrollment["payments"]) == 2
 
     no_class_enrollment = client.post(

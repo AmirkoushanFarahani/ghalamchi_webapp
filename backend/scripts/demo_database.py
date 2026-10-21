@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
+from backend.app.core.currency import CURRENCY, from_rials
 from backend.app.core.passwords import hash_password
 from backend.app.db.bootstrap import seed_rbac
 from backend.app.db.database import SessionLocal
@@ -28,7 +29,9 @@ from backend.app.db.models import (
     EnrollmentSupportChange,
     ExamPricingPeriod,
     Role,
+    SchoolAcademicYear,
     SchoolCost,
+    SchoolCostPayment,
     SchoolCourse,
     SchoolExamPlan,
     SchoolInstitute,
@@ -44,6 +47,7 @@ from sqlalchemy import select
 MANAGER_EMAIL = "demo.school.manager2@example.com"
 MODELS: tuple[type[Any], ...] = (
     SchoolInstitute,
+    SchoolAcademicYear,
     SchoolCourse,
     DiscountCode,
     SchoolRegistrationFees,
@@ -59,6 +63,7 @@ MODELS: tuple[type[Any], ...] = (
     EnrollmentServiceCancellation,
     EnrollmentSupportChange,
     SchoolCost,
+    SchoolCostPayment,
 )
 SNAPSHOT = Path(__file__).parent / "data" / "demo_database.json.gz.b64"
 
@@ -82,6 +87,7 @@ def export_demo() -> None:
         users_by_id = {user.id: user for user in users}
         data: dict[str, Any] = {
             "format_version": 1,
+            "currency": CURRENCY,
             "users": [
                 {
                     key: getattr(user, key)
@@ -137,6 +143,17 @@ def export_demo() -> None:
                 rows = list(
                     session.scalars(select(model).where(model.enrollment_id.in_(enrollment_ids)))
                 )
+            elif model is SchoolCostPayment:
+                rows = list(
+                    session.scalars(
+                        select(model)
+                        .join(SchoolCost)
+                        .where(
+                            SchoolCost.workspace_owner_id == manager.id,
+                            SchoolCost.factor_number.like("GIRLS-COST-%"),
+                        )
+                    )
+                )
             elif model is SchoolCost:
                 rows = list(
                     session.scalars(
@@ -168,7 +185,11 @@ def export_demo() -> None:
         print(json.dumps(data, ensure_ascii=False, indent=2, default=str))
 
 
-def typed_values(model: type[Any], record: dict[str, Any]) -> dict[str, Any]:
+def typed_values(
+    model: type[Any], record: dict[str, Any], source_currency: str = CURRENCY
+) -> dict[str, Any]:
+    if source_currency not in {CURRENCY, "IRR"}:
+        raise ValueError("Unsupported snapshot currency")
     result = {}
     for column in model.__table__.columns:
         # Older committed snapshots deliberately do not contain newly added fields.
@@ -182,6 +203,12 @@ def typed_values(model: type[Any], record: dict[str, Any]) -> dict[str, Any]:
                 value = UUID(value)
             elif datatype is Decimal:
                 value = Decimal(value)
+                if (
+                    source_currency == "IRR"
+                    and column.type.precision == 18
+                    and column.type.scale == 2
+                ):
+                    value = from_rials(value)
             elif datatype in (date, datetime):
                 value = datatype.fromisoformat(value)
         result[column.name] = value
@@ -234,7 +261,7 @@ def import_demo() -> None:
             for record in data["tables"].get(model.__tablename__, []):
                 if session.get(model, UUID(record["id"])) is not None:
                     raise ValueError("Snapshot ID already exists; import rolled back")
-                session.add(model(**typed_values(model, record)))
+                session.add(model(**typed_values(model, record, data.get("currency", "IRR"))))
             session.flush()
             if model is SchoolInstitute:
                 for user, school_id, active_id in users:

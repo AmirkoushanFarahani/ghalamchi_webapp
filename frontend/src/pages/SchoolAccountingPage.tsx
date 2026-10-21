@@ -5,7 +5,7 @@ import { api, query } from "../services/api";
 import type { Payables, Student } from "../types/api";
 import { Link } from "../routes/router";
 
-interface ExpenseList { total: string; items: Array<{ id: string; factor_number: string; reason: string; amount: string; cost_date: string; payment_method: string }> }
+import type { SchoolCostList as ExpenseList } from "./SchoolCostsPage";
 interface StudentSegment { student_id: string; segment: number; behavioral_description: string; model_version: string; prediction_timestamp: string; as_of: string }
 function Kpi({ title, value, tone = "" }: { title: string; value: string; tone?: string }) { return <article className={`kpi ${tone}`}><span>{title}</span><Money value={value} /></article>; }
 
@@ -31,8 +31,9 @@ export function SchoolAccountingPage() {
     const received = enrollments.reduce((sum, enrollment) => sum + Number(enrollment.amount_paid), 0);
     const receivable = enrollments.reduce((sum, enrollment) => sum + Number(enrollment.balance_due), 0);
     const expenses = Number(state.data?.expenses.total ?? 0);
-    const payables = Number(state.data?.payables.total_payables ?? 0);
-    return { billed, received, receivable, expenses, payables, net: received - expenses };
+    const paidExpenses = Number(state.data?.expenses.total_paid ?? 0);
+    const payables = Number(state.data?.payables.total_payables ?? 0) + Number(state.data?.expenses.total_outstanding ?? 0);
+    return { billed, received, receivable, expenses, payables, net: received - paidExpenses };
   }, [filteredStudents, state.data]);
   const records = useMemo(() => filteredStudents.flatMap((student) => student.enrollments.map((enrollment) => ({ student, enrollment }))), [filteredStudents]);
   const collections = useMemo(() => {
@@ -51,7 +52,7 @@ export function SchoolAccountingPage() {
     row.count += 1; row.billed += Number(enrollment.total_amount); row.paid += Number(enrollment.amount_paid); row.balance += Number(enrollment.balance_due); summary[enrollment.grade ?? student.grade] = row; return summary;
   }, {})).sort(([first], [second]) => first.localeCompare(second)), [records]);
   const costByMethod = useMemo(() => {
-    const totalFor = (method: string) => state.data?.expenses.items.filter((cost) => cost.payment_method === method).reduce((sum, cost) => sum + Number(cost.amount), 0) ?? 0;
+    const totalFor = (method: string) => state.data?.expenses.items.flatMap((cost) => cost.payments).filter((payment) => payment.status === "PAID" && payment.method === method).reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0;
     return { cash: totalFor("CASH"), transfer: totalFor("BANK_TRANSFER"), check: totalFor("CHECK") };
   }, [state.data]);
   async function cluster(student: Student) {
@@ -69,7 +70,7 @@ export function SchoolAccountingPage() {
       {invalidPeriod && <p className="alert alert--error">تاریخ پایان باید بعد از تاریخ شروع باشد.</p>}
       {(period.start || period.end) && <button type="button" className="text-button" onClick={() => { setStartDate(""); setEndDate(""); setPeriod({ start: "", end: "" }); }}>پاک‌کردن فیلتر تاریخ</button>}
     </form>
-    <section className="kpi-grid kpi-grid--3"><Kpi title="کل شهریه ثبت‌شده" value={totals.billed.toString()} tone="positive" /><Kpi title="شهریه دریافت‌شده" value={totals.received.toString()} tone="positive" /><Kpi title="مانده بدهی دانش‌آموزان" value={totals.receivable.toString()} tone={totals.receivable > 0 ? "negative" : "positive"} /><Kpi title="هزینه‌های ثبت‌شده" value={totals.expenses.toString()} /><Kpi title="بدهی به تأمین‌کنندگان" value={totals.payables.toString()} tone={totals.payables > 0 ? "negative" : "positive"} /><Kpi title="خالص دریافتی پس از هزینه" value={totals.net.toString()} tone={totals.net >= 0 ? "positive" : "negative"} /></section>
+    <section className="kpi-grid kpi-grid--3"><Kpi title="کل شهریه ثبت‌شده" value={totals.billed.toString()} tone="positive" /><Kpi title="شهریه دریافت‌شده" value={totals.received.toString()} tone="positive" /><Kpi title="مانده بدهی دانش‌آموزان" value={totals.receivable.toString()} tone={totals.receivable > 0 ? "negative" : "positive"} /><Kpi title="هزینه‌های ثبت‌شده" value={totals.expenses.toString()} /><Kpi title="بدهی بابت خرید و هزینه‌ها" value={totals.payables.toString()} tone={totals.payables > 0 ? "negative" : "positive"} /><Kpi title="خالص دریافتی پس از هزینه" value={totals.net.toString()} tone={totals.net >= 0 ? "positive" : "negative"} /></section>
     <section className="card"><h2 className="card-title">راهنمای مانده‌ها</h2><div className="detail-grid"><p><strong>دانش‌آموزان بدهکار:</strong> شهریه‌ای که هنوز دریافت نشده است.</p><p><strong>بدهی به دیگران:</strong> صورتحساب‌های خرید صادرشده که هنوز پرداخت نشده‌اند.</p><p><strong>هزینه‌ها:</strong> پرداخت‌های هزینه‌ای که از بخش هزینه‌ها ثبت شده‌اند.</p></div></section>
     <section className="dashboard-grid">
       <section className="card"><h2 className="card-title">روش دریافت شهریه</h2><div className="detail-grid"><p>نقدی: <Money value={collections.cash.toString()} /></p><p>انتقال بانکی: <Money value={collections.transfer.toString()} /></p><p>چک وصول‌شده: <Money value={collections.check.toString()} /></p><p>اقساط وصول‌شده: <Money value={collections.installment.toString()} /></p></div></section>

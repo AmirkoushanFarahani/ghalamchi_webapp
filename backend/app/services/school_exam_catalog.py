@@ -7,7 +7,7 @@ CatalogRow = tuple[str, str | None, int, int, tuple[ExamPrice, ExamPrice, ExamPr
 
 # grade, academic track, book voucher, book discount, and the three selectable plans.
 # Each plan is (exam count, unit price, total price), in rials.
-DEFAULT_EXAM_CATALOG: tuple[CatalogRow, ...] = (
+_RIAL_EXAM_CATALOG: tuple[CatalogRow, ...] = (
     *(
         (
             "GRADE_12",
@@ -130,6 +130,22 @@ DEFAULT_EXAM_CATALOG: tuple[CatalogRow, ...] = (
         )
         for grade in ("GRADE_5", "GRADE_4", "GRADE_3", "GRADE_2")
     ),
+)
+
+# Public defaults use Toman; original workbook constants above remain explicitly Rial.
+DEFAULT_EXAM_CATALOG: tuple[CatalogRow, ...] = tuple(
+    (
+        grade,
+        track,
+        voucher // 10,
+        discount // 10,
+        (
+            (plans[0][0], plans[0][1] // 10, plans[0][2] // 10),
+            (plans[1][0], plans[1][1] // 10, plans[1][2] // 10),
+            (plans[2][0], plans[2][1] // 10, plans[2][2] // 10),
+        ),
+    )
+    for grade, track, voucher, discount, plans in _RIAL_EXAM_CATALOG
 )
 
 PLAN_CODES = ("0215", "00231", "0331")

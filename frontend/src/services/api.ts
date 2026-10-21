@@ -4,7 +4,7 @@ const messages: Record<number, string> = { 400: "اطلاعات درخواست �
 const fieldLabels: Record<string, string> = {
   academic_year: "سال تحصیلی", starts_on: "تاریخ شروع", ends_on: "تاریخ پایان",
   full_name: "نام دانش‌آموز", national_id: "کد ملی", birth_date: "تاریخ تولد", grade: "پایه تحصیلی",
-  academic_track: "رشته تحصیلی", guardian_full_name: "نام ولی", guardian_phone: "تلفن ولی",
+  academic_track: "رشته تحصیلی", guardian_full_name: "نام پدر", guardian_phone: "تلفن پدر",
   course_ids: "کلاس‌ها", exam_plan_id: "طرح آزمون", payments: "پرداخت‌ها", due_date: "تاریخ سررسید",
   amount: "مبلغ", method: "روش پرداخت", registration_date: "تاریخ ثبت‌نام",
 };

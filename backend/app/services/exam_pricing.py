@@ -2,13 +2,13 @@
 
 import json
 from datetime import date
-from decimal import Decimal
 from pathlib import Path
 from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from backend.app.core.currency import from_rials
 from backend.app.db.models import ExamPricingPeriod, SchoolExamPlan, SchoolInstitute
 from backend.app.services.academic_years import ensure_initial_years
 
@@ -70,10 +70,10 @@ def install_exam_catalog(session: Session, owner_id: UUID, school_id: UUID) -> i
                     academic_track=row["academic_track"],
                     plan_code=source["plan_code"],
                     exam_count=count,
-                    exam_unit_price=Decimal(unit),
-                    exam_total=Decimal(total),
-                    book_voucher_amount=Decimal(row["book_voucher_amount"]),
-                    book_voucher_discount=Decimal(row["book_voucher_discount"]),
+                    exam_unit_price=from_rials(unit),
+                    exam_total=from_rials(total),
+                    book_voucher_amount=from_rials(row["book_voucher_amount"]),
+                    book_voucher_discount=from_rials(row["book_voucher_discount"]),
                 )
             )
             existing_plans.add(key)

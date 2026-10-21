@@ -99,7 +99,7 @@ def main():
                             **owned,
                             name=f"Product {j}",
                             sku=f"P{j}",
-                            unit_price=100000,
+                            unit_price=10000,
                         )
                     )
                 for role_name, kind in [
@@ -139,7 +139,7 @@ def main():
                             "id": key(f"line-{i}-0"),
                             "journal_id": journal,
                             "account_id": key(f"account-{i}-RECEIVABLE"),
-                            "debit": 100000,
+                            "debit": 10000,
                             "credit": 0,
                         },
                         {
@@ -147,7 +147,7 @@ def main():
                             "journal_id": journal,
                             "account_id": key(f"account-{i}-REVENUE"),
                             "debit": 0,
-                            "credit": 100000,
+                            "credit": 10000,
                         },
                     ]
                 )
@@ -161,8 +161,8 @@ def main():
                             customer_id=key(f"party-{i}-{j}"),
                             issue_date=today,
                             due_date=today,
-                            subtotal=100000,
-                            total=100000,
+                            subtotal=10000,
+                            total=10000,
                             status="ISSUED" if j == 0 else "DRAFT",
                             journal_id=journal if j == 0 else None,
                         )
@@ -173,9 +173,9 @@ def main():
                             "invoice_id": invoice,
                             "description": "Synthetic item",
                             "quantity": 1,
-                            "unit_price": 100000,
-                            "line_subtotal": 100000,
-                            "line_total": 100000,
+                            "unit_price": 10000,
+                            "line_subtotal": 10000,
+                            "line_total": 10000,
                         }
                     )
             for table, name in [

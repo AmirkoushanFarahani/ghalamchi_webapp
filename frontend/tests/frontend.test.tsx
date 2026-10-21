@@ -9,6 +9,15 @@ test("exam table uses a dash for grades 1–9 and preserves upper-grade majors",
 });
 import assert from "node:assert/strict";
 import { renderToStaticMarkup } from "react-dom/server";
+import { Money } from "../src/components/ui";
+
+test("Toman money displays and inputs preserve API values without converting twice", () => {
+  const html = renderToStaticMarkup(<Money value="1000000.00" />);
+  assert.match(html, /1,000,000/);
+  assert.match(html, /تومان/);
+  assert.doesNotMatch(html, /ریال|100,000/);
+  assert.equal(normalizeMoneyInput("۱٬۰۰۰٬۰۰۰"), "1000000");
+});
 import indexHtml from "../index.html?raw";
 import mainSource from "../src/main.tsx?raw";
 import styleSource from "../src/styles.css?raw";
@@ -184,7 +193,7 @@ test("Persian typography is self-hosted with Vazirmatn", () => { assert.match(ma
 test("financial formatting always uses English digits", () => { assert.equal(formatMoney("123456.7"), "123,456.70"); assert.equal(formatMoney("123456.00"), "123,456"); assert.equal(formatMoney("0.00"), "0"); assert.equal(formatMoney("-123456.00"), "-123,456"); assert.equal(formatNumber(1234.5), "1,234.5"); assert.equal(formatPercent(.831), "83.1%"); assert.equal(toEnglishDigits("۱۲۳٤٥"), "12345"); });
 test("Jalali and Gregorian conversion round trip", () => { assert.equal(gregorianToJalali("2026-08-25"), "1405/06/03"); assert.equal(jalaliToGregorian("۱۴۰۵/۰۶/۰۳"), "2026-08-25"); assert.throws(() => jalaliToGregorian("1404/12/30")); });
 test("light theme is default and switching is deterministic", () => { assert.equal(defaultTheme(null), "light"); assert.equal(defaultTheme("dark"), "dark"); assert.equal(nextTheme("light"), "dark"); assert.equal(nextTheme("dark"), "light"); });
-test("Rial inputs group thousands while preserving the raw submitted value", () => { assert.equal(formatMoneyInput("1234567890.50"), "1,234,567,890.50"); assert.equal(normalizeMoneyInput("۱٬۲۳۴٬۵۶۷٫۸۹"), "1234567.89"); const html = renderToStaticMarkup(<MoneyInput name="amount" value="1234567.89" required/>); assert.match(html, /value="1,234,567\.89"/); assert.match(html, /type="hidden" name="amount" value="1234567\.89"/); });
+test("Toman inputs group thousands while preserving the raw submitted value", () => { assert.equal(formatMoneyInput("1234567890.50"), "1,234,567,890.50"); assert.equal(normalizeMoneyInput("۱٬۲۳۴٬۵۶۷٫۸۹"), "1234567.89"); const html = renderToStaticMarkup(<MoneyInput name="amount" value="1234567.89" required/>); assert.match(html, /value="1,234,567\.89"/); assert.match(html, /type="hidden" name="amount" value="1234567\.89"/); });
 test("desktop navigation keeps one menu open and closes it when the pointer leaves", () => { assert.match(layoutSource, /openGroup === entry\.label/); assert.match(layoutSource, /onMouseLeave=\{\(\) => setOpenGroup\(null\)\}/); assert.match(layoutSource, /onMouseEnter=\{\(\) => setOpenGroup\(entry\.label\)\}/); });
 test("desktop submenu has a hover bridge between its trigger and options", () => { assert.match(styleSource, /\.nav-menu::before/); assert.match(styleSource, /top: -10px; height: 10px/); });
 test("account category filters posting roles and parent-account choices", () => { assert.deepEqual(postingRolesForAccountType("ASSET"), ["GENERAL", "CASH", "RECEIVABLE"]); assert.deepEqual(postingRolesForAccountType("REVENUE"), ["GENERAL", "REVENUE"]); assert.deepEqual(postingRolesForAccountType("LIABILITY"), ["GENERAL", "TAX_LIABILITY", "PAYABLE", "CUSTOMER_CREDIT"]); assert.deepEqual(postingRolesForAccountType("EXPENSE"), ["GENERAL", "EXPENSE"]); assert.deepEqual(postingRolesForAccountType("EQUITY"), ["GENERAL"]); assert.match(masterDataSource, /account\.category_id === categoryId/); assert.match(masterDataSource, /setPostingRole\(""\); setParentId\(""\)/); assert.match(masterDataSource, /disabled=\{!selectedType\}/); });

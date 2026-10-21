@@ -5,6 +5,8 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator, model_validator
 
+from backend.app.schemas.payment_plan import PaymentPlanCreate
+
 SchoolGrade = Literal[
     "GRADE_1",
     "GRADE_2",
@@ -226,6 +228,9 @@ class EnrollmentPaymentCreate(BaseModel):
 
 
 class StudentEnrollmentCreate(BaseModel):
+    mother_full_name: str | None = Field(default=None, max_length=200)
+    mother_phone: str | None = Field(default=None, max_length=32)
+    payment_plan: PaymentPlanCreate | None = None
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     academic_year: str = Field(default="1405/1406", pattern=r"^1[0-9]{3}/1[0-9]{3}$")
     full_name: str = Field(min_length=3, max_length=200)
@@ -329,6 +334,7 @@ class ServiceCancellationRead(ORMModel):
 
 
 class SupportChangeCreate(BaseModel):
+    payment_plan: PaymentPlanCreate | None = None
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     support_id: UUID
     period: Literal["MONTHLY", "SEASONAL"]
@@ -352,6 +358,7 @@ class SupportChangeRead(ORMModel):
 
 
 class EnrollmentPaymentRead(ORMModel):
+    paid_on: date | None = None
     id: UUID
     amount: Decimal
     method: PaymentMethod
@@ -391,6 +398,8 @@ class EnrollmentRead(ORMModel):
 
 
 class StudentRead(ORMModel):
+    mother_full_name: str | None = None
+    mother_phone: str | None = None
     id: UUID
     full_name: str
     national_id: str
@@ -412,12 +421,33 @@ class StudentRead(ORMModel):
     enrollments: list[EnrollmentRead]
 
 
+class StudentUpdate(BaseModel):
+    """Personal/current-grade correction, never a rewrite of purchased services."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+    full_name: str = Field(min_length=3, max_length=200)
+    national_id: str = Field(min_length=5, max_length=20)
+    birth_date: date
+    grade: SchoolGrade
+    academic_track: str | None = Field(default=None, max_length=100)
+    student_phone: str | None = Field(default=None, max_length=32)
+    guardian_full_name: str = Field(min_length=3, max_length=200)
+    guardian_phone: str = Field(min_length=7, max_length=32)
+    mother_full_name: str | None = Field(default=None, max_length=200)
+    mother_phone: str | None = Field(default=None, max_length=32)
+    address: str | None = Field(default=None, max_length=500)
+    previous_school: str | None = Field(default=None, max_length=200)
+    emergency_contact: str | None = Field(default=None, max_length=200)
+    notes: str | None = Field(default=None, max_length=1000)
+
+
 class PaymentStatusUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     status: Literal["PAID", "BOUNCED", "CANCELLED"]
 
 
 class ClassChangeCreate(BaseModel):
+    payment_plan: PaymentPlanCreate | None = None
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     new_course_id: UUID
     expected_old_price: Decimal = Field(ge=0, max_digits=18, decimal_places=2)
@@ -477,38 +507,48 @@ class StudentSegmentationRead(BaseModel):
 
 
 class SchoolCostCreate(BaseModel):
+    payment_plan: PaymentPlanCreate | None = None
     model_config = ConfigDict(str_strip_whitespace=True, extra="forbid")
     factor_number: str | None = Field(default=None, max_length=100)
     vendor_name: str | None = Field(default=None, max_length=200)
     reason: str = Field(min_length=1, max_length=300)
     amount: Decimal = Field(gt=0, max_digits=18, decimal_places=2)
     cost_date: date
-    payment_method: SchoolCostPaymentMethod
+    payment_method: SchoolCostPaymentMethod = "CASH"
     check_due_date: date | None = None
     tracking_code: str | None = Field(default=None, max_length=100)
     notes: str | None = Field(default=None, max_length=1000)
 
     @model_validator(mode="after")
     def check_requires_due_date(self) -> "SchoolCostCreate":
-        if self.payment_method == "CHECK" and self.check_due_date is None:
+        if (
+            self.payment_plan is None
+            and self.payment_method == "CHECK"
+            and self.check_due_date is None
+        ):
             raise ValueError("A check cost requires a due date")
         return self
 
 
 class SchoolCostRead(ORMModel):
+    amount_paid: Decimal
+    balance_due: Decimal
+    payments: list[EnrollmentPaymentRead] = Field(default_factory=list)
     id: UUID
     factor_number: str
     vendor_name: str | None
     reason: str
     amount: Decimal
     cost_date: date
-    payment_method: SchoolCostPaymentMethod
+    payment_method: str
     check_due_date: date | None
     tracking_code: str | None
     notes: str | None
 
 
 class SchoolCostList(BaseModel):
+    total_paid: Decimal = Decimal("0")
+    total_outstanding: Decimal = Decimal("0")
     items: list[SchoolCostRead]
     total: Decimal
 
@@ -571,6 +611,8 @@ class SchoolSecretaryStatusUpdate(BaseModel):
 
 
 class SchoolComparisonRead(BaseModel):
+    costs_paid: Decimal = Decimal("0")
+    cost_debt: Decimal = Decimal("0")
     school_institute_id: UUID
     school_name: str
     student_count: int

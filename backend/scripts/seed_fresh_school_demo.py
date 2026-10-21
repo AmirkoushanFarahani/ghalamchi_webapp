@@ -7,8 +7,7 @@ It does not delete or change any existing workspace.
 from datetime import date, timedelta
 from decimal import Decimal
 
-from sqlalchemy import select
-
+from backend.app.core.currency import from_rials
 from backend.app.core.passwords import hash_password
 from backend.app.db.bootstrap import seed_rbac
 from backend.app.db.database import SessionLocal
@@ -21,6 +20,7 @@ from backend.app.db.models import (
     StudentEnrollment,
     User,
 )
+from sqlalchemy import select
 
 MANAGER_EMAIL = "demo.school.manager2@example.com"
 SECRETARY_EMAIL = "demo.school.secretary2@example.com"
@@ -76,7 +76,7 @@ def main() -> None:
                 workspace_owner_id=manager.id,
                 name=name,
                 grade=grade,
-                price=Decimal(price),
+                price=from_rials(price),
             )
             session.add(course)
             courses.append(course)
@@ -86,10 +86,26 @@ def main() -> None:
         samples = (
             ("مریم رضایی", "9100000001", "GRADE_7", courses[0], "PAID", "2500000", "2500000"),
             ("علی احمدی", "9100000002", "GRADE_8", courses[1], "UNPAID", "2800000", "0"),
-            ("سارا محمدی", "9100000003", "GRADE_9", courses[2], "PARTIALLY_PAID", "3200000", "1200000"),
+            (
+                "سارا محمدی",
+                "9100000003",
+                "GRADE_9",
+                courses[2],
+                "PARTIALLY_PAID",
+                "3200000",
+                "1200000",
+            ),
             ("امیر حسینی", "9100000004", "GRADE_10", courses[3], "UNPAID", "3600000", "0"),
             ("نگار کریمی", "9100000005", "GRADE_11", courses[4], "PAID", "3900000", "3900000"),
-            ("رضا موسوی", "9100000006", "GRADE_12", courses[5], "PARTIALLY_PAID", "4500000", "1500000"),
+            (
+                "رضا موسوی",
+                "9100000006",
+                "GRADE_12",
+                courses[5],
+                "PARTIALLY_PAID",
+                "4500000",
+                "1500000",
+            ),
         )
         for index, (name, national_id, grade, course, status, total, paid) in enumerate(samples):
             student = Student(
@@ -106,8 +122,8 @@ def main() -> None:
             )
             session.add(student)
             session.flush()
-            total_amount = Decimal(total)
-            paid_amount = Decimal(paid)
+            total_amount = from_rials(total)
+            paid_amount = from_rials(paid)
             enrollment = StudentEnrollment(
                 workspace_owner_id=manager.id,
                 student_id=student.id,
@@ -150,7 +166,9 @@ def main() -> None:
                         recorded_by_id=secretary.id,
                         amount=total_amount - paid_amount,
                         method="INSTALLMENT" if index % 2 else "CHECK",
-                        due_date=today - timedelta(days=3) if index == 1 else today + timedelta(days=12),
+                        due_date=today - timedelta(days=3)
+                        if index == 1
+                        else today + timedelta(days=12),
                         tracking_code=f"DEMO-NEW-{index + 1:02d}",
                         status="PENDING",
                     )

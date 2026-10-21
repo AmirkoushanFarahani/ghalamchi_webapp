@@ -8,6 +8,7 @@ import os
 from datetime import date
 from decimal import Decimal
 
+from backend.app.core.currency import from_rials
 from backend.app.core.passwords import hash_password
 from backend.app.db.bootstrap import seed_rbac
 from backend.app.db.database import SessionLocal
@@ -44,7 +45,13 @@ COURSES = (
 
 
 def _user(
-    session: Session, *, email: str, first_name: str, last_name: str, role: Role, password: str,
+    session: Session,
+    *,
+    email: str,
+    first_name: str,
+    last_name: str,
+    role: Role,
+    password: str,
 ) -> User:
     user = session.scalar(select(User).where(User.email == email))
     if user is None:
@@ -106,7 +113,7 @@ def main() -> None:
                     workspace_owner_id=manager.id,
                     name=name,
                     grade=grade,
-                    price=Decimal(price),
+                    price=from_rials(price),
                 )
                 session.add(course)
                 session.flush()
@@ -139,7 +146,7 @@ def main() -> None:
             phone="09120000001",
             payment_method="CHECK",
             payment_status="PENDING",
-            payment_amount=Decimal("2500000"),
+            payment_amount=from_rials("2500000"),
         )
         _seed_student(
             session,
@@ -152,16 +159,25 @@ def main() -> None:
             phone="09120000002",
             payment_method="INSTALLMENT",
             payment_status="PENDING",
-            payment_amount=Decimal("1500000"),
+            payment_amount=from_rials("1500000"),
         )
         for number, grade, name in (
-            (3, "GRADE_1", "نیلا کریمی (نمونه)"), (4, "GRADE_4", "پارسا محمدی (نمونه)"),
-            (5, "GRADE_8", "هلیا موسوی (نمونه)"), (6, "GRADE_12", "امیرحسین حسینی (نمونه)"),
+            (3, "GRADE_1", "نیلا کریمی (نمونه)"),
+            (4, "GRADE_4", "پارسا محمدی (نمونه)"),
+            (5, "GRADE_8", "هلیا موسوی (نمونه)"),
+            (6, "GRADE_12", "امیرحسین حسینی (نمونه)"),
         ):
             _seed_student(
-                session, manager=manager, employee=employee, course=courses[grade], full_name=name,
-                national_id=f"900000000{number}", guardian=f"ولی {name}",
-                phone=f"0912000000{number}", payment_method="CASH", payment_status="PAID",
+                session,
+                manager=manager,
+                employee=employee,
+                course=courses[grade],
+                full_name=name,
+                national_id=f"900000000{number}",
+                guardian=f"ولی {name}",
+                phone=f"0912000000{number}",
+                payment_method="CASH",
+                payment_status="PAID",
                 payment_amount=courses[grade].price,
             )
 

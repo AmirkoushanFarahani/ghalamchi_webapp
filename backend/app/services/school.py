@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from backend.app.core.passwords import hash_password
+from backend.app.core.persian_calendar import today_in_tehran
 from backend.app.db.models import (
     DiscountCode,
     EnrollmentClassChange,
@@ -19,6 +20,7 @@ from backend.app.db.models import (
     Role,
     SchoolAcademicYear,
     SchoolCost,
+    SchoolCostPayment,
     SchoolCourse,
     SchoolExamPlan,
     SchoolInstitute,
@@ -29,6 +31,7 @@ from backend.app.db.models import (
     User,
 )
 from backend.app.repositories.audit import AuditRepository
+from backend.app.schemas.payment_plan import PaymentPlanCreate, PaymentPlanReplace
 from backend.app.schemas.school import (
     AcademicYearCreate,
     AttendanceCreate,
@@ -51,9 +54,11 @@ from backend.app.schemas.school import (
     ServiceCancellationCreate,
     SpecialSupportUpdate,
     StudentEnrollmentCreate,
+    StudentUpdate,
     SupportChangeCreate,
 )
 from backend.app.services.exam_pricing import install_exam_catalog
+from backend.app.services.payment_plans import build_payment_plan
 
 
 class SchoolError(ValueError):
@@ -345,7 +350,7 @@ class SchoolService:
 
     def comparison(self) -> list[dict[str, object]]:
         self._require_manager()
-        today = date.today()
+        today = today_in_tehran()
         result: list[dict[str, object]] = []
         for school in self.list_institutes():
             enrollments = list(
@@ -400,7 +405,9 @@ class SchoolService:
                     "outstanding_tuition": outstanding,
                     "due_payments": due,
                     "costs": sum((row.amount for row in costs), Decimal("0")),
-                    "net_cash": received - sum((row.amount for row in costs), Decimal("0")),
+                    "costs_paid": sum((row.amount_paid for row in costs), Decimal("0")),
+                    "cost_debt": sum((row.balance_due for row in costs), Decimal("0")),
+                    "net_cash": received - sum((row.amount_paid for row in costs), Decimal("0")),
                 }
             )
         return result
@@ -946,23 +953,141 @@ class SchoolService:
         )
 
     def create_cost(self, data: SchoolCostCreate) -> SchoolCost:
-        values = data.model_dump()
+        values = data.model_dump(exclude={"payment_plan"})
+        parts = (
+            self._payment_parts(data.amount, data.payment_plan, data.cost_date)
+            if data.payment_plan
+            else [
+                EnrollmentPaymentCreate(
+                    amount=data.amount,
+                    method=data.payment_method,
+                    due_date=data.check_due_date,
+                    tracking_code=data.tracking_code,
+                )
+            ]
+        )
+        if data.payment_plan:
+            values["payment_method"] = parts[0].method if len(parts) == 1 else "MIXED"
+            values["check_due_date"] = None
+            values["tracking_code"] = None
         supplied_number = values.pop("factor_number")
         cost = SchoolCost(
             workspace_owner_id=self.workspace_owner_id,
             school_institute_id=self.school_institute_id,
             created_by_id=self.actor.id,
             factor_number=(
-                supplied_number or f"COST-{date.today():%Y%m%d}-{uuid4().hex[:8].upper()}"
+                supplied_number or f"COST-{today_in_tehran():%Y%m%d}-{uuid4().hex[:8].upper()}"
             ),
             **values,
         )
         self.session.add(cost)
+        cost.payments = [
+            SchoolCostPayment(
+                recorded_by_id=self.actor.id,
+                **part.model_dump(),
+                status="PAID" if part.method in {"CASH", "BANK_TRANSFER"} else "PENDING",
+                paid_on=data.cost_date if part.method in {"CASH", "BANK_TRANSFER"} else None,
+            )
+            for part in parts
+        ]
         try:
             self.session.commit()
         except IntegrityError as exc:
             self.session.rollback()
             raise SchoolConflictError("A cost factor with this number already exists") from exc
+        return cost
+
+    @staticmethod
+    def _payment_parts(
+        total: Decimal, plan: PaymentPlanCreate, anchor: date
+    ) -> list[EnrollmentPaymentCreate]:
+        try:
+            return [
+                EnrollmentPaymentCreate.model_validate(row.model_dump())
+                for row in build_payment_plan(total, plan, anchor)
+            ]
+        except ValueError as exc:
+            raise SchoolError(str(exc)) from exc
+
+    def _locked_cost(self, cost_id: UUID) -> SchoolCost:
+        self._require_manager()
+        cost = self.session.scalar(
+            select(SchoolCost)
+            .where(
+                SchoolCost.id == cost_id,
+                SchoolCost.workspace_owner_id == self.workspace_owner_id,
+                SchoolCost.school_institute_id == self.school_institute_id,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if cost is None:
+            raise SchoolError("فاکتور هزینه در این آموزشگاه پیدا نشد.")
+        return cost
+
+    @staticmethod
+    def _check_plan_version(
+        balance: Decimal,
+        payments: list[EnrollmentPayment] | list[SchoolCostPayment],
+        data: PaymentPlanReplace,
+    ) -> None:
+        actual = {p.id for p in payments if p.status in {"PENDING", "BOUNCED"}}
+        if balance != data.expected_balance or actual != set(data.expected_pending_ids):
+            raise SchoolConflictError(
+                "برنامه یا وضعیت پرداخت تغییر کرده است؛ صفحه را تازه‌سازی کنید."
+            )
+
+    def replace_cost_plan(self, cost_id: UUID, data: PaymentPlanReplace) -> SchoolCost:
+        cost = self._locked_cost(cost_id)
+        self._check_plan_version(cost.balance_due, cost.payments, data)
+        parts = self._payment_parts(cost.balance_due, data.plan, today_in_tehran())
+        for row in cost.payments:
+            if row.status in {"PENDING", "BOUNCED"}:
+                row.status = "CANCELLED"
+        cost.payments.extend(
+            SchoolCostPayment(
+                recorded_by_id=self.actor.id,
+                **part.model_dump(),
+                status="PAID" if part.method in {"CASH", "BANK_TRANSFER"} else "PENDING",
+                paid_on=today_in_tehran() if part.method in {"CASH", "BANK_TRANSFER"} else None,
+            )
+            for part in parts
+        )
+        cost.payment_method = "MIXED"
+        AuditRepository(self.session).record(
+            action="school.cost.payment_plan.replaced",
+            resource_type="school_cost",
+            resource_id=str(cost.id),
+            actor_id=self.actor.id,
+            success=True,
+        )
+        self.session.commit()
+        return cost
+
+    def update_cost_payment(
+        self, cost_id: UUID, payment_id: UUID, data: PaymentStatusUpdate
+    ) -> SchoolCost:
+        cost = self._locked_cost(cost_id)
+        payment = next((p for p in cost.payments if p.id == payment_id), None)
+        if payment is None:
+            raise SchoolError("پرداخت در این فاکتور پیدا نشد.")
+        if payment.status in {"PAID", "CANCELLED"} or data.status == "CANCELLED":
+            raise SchoolConflictError(
+                "پرداخت قطعی تغییر نمی‌کند؛ برای جایگزینی، برنامه مانده را ویرایش کنید."
+            )
+        if data.status == "PAID" and payment.amount > cost.balance_due:
+            raise SchoolConflictError("مبلغ پرداخت از مانده هزینه بیشتر است.")
+        payment.status = data.status
+        payment.paid_on = today_in_tehran() if data.status == "PAID" else None
+        AuditRepository(self.session).record(
+            action="school.cost.payment.status_changed",
+            resource_type="school_cost_payment",
+            resource_id=str(payment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={"status": data.status},
+        )
+        self.session.commit()
         return cost
 
     def get_student(self, student_id: UUID) -> Student:
@@ -977,6 +1102,41 @@ class SchoolService:
             raise SchoolError("Student was not found")
         self._load_student_details(student)
         return student
+
+    def update_student(self, student_id: UUID, data: StudentUpdate) -> Student:
+        student = self.session.scalar(
+            select(Student)
+            .where(
+                Student.id == student_id,
+                Student.workspace_owner_id == self.workspace_owner_id,
+                Student.school_institute_id == self.school_institute_id,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if student is None:
+            raise SchoolError("Student was not found")
+        values = data.model_dump()
+        if int(data.grade.removeprefix("GRADE_")) <= 9:
+            values["academic_track"] = None
+        changed = [key for key, value in values.items() if getattr(student, key) != value]
+        for key, value in values.items():
+            setattr(student, key, value)
+        # Enrollment grade/year, price and payment snapshots deliberately remain unchanged.
+        AuditRepository(self.session).record(
+            action="school.student.updated",
+            resource_type="student",
+            resource_id=str(student.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={"fields": changed},
+        )
+        try:
+            self.session.commit()
+        except IntegrityError as exc:
+            self.session.rollback()
+            raise SchoolConflictError("این کد ملی قبلاً در همین آموزشگاه ثبت شده است.") from exc
+        return self.get_student(student_id)
 
     def create_enrollment(self, data: StudentEnrollmentCreate) -> Student:
         self.require_academic_year(data.academic_year)
@@ -1037,8 +1197,19 @@ class SchoolService:
             else Decimal("0")
         )
         total = subtotal - discount_amount
+        if data.payment_plan is not None and data.payments:
+            raise SchoolError("برنامه پرداخت و پرداخت‌های قدیمی را هم‌زمان ارسال نکنید.")
+        payments = (
+            self._payment_parts(
+                total, data.payment_plan, data.registration_date or today_in_tehran()
+            )
+            if data.payment_plan is not None
+            else data.payments
+        )
+        if sum((p.amount for p in payments), Decimal("0")) > total:
+            raise SchoolError("جمع تمام پرداخت‌ها و چک‌ها نمی‌تواند بیشتر از فاکتور باشد.")
         paid_amount = sum(
-            (item.amount for item in data.payments if item.method in {"CASH", "BANK_TRANSFER"}),
+            (item.amount for item in payments if item.method in {"CASH", "BANK_TRANSFER"}),
             Decimal("0"),
         )
         if paid_amount > total:
@@ -1051,7 +1222,7 @@ class SchoolService:
             academic_year=data.academic_year,
             grade=data.grade,
             academic_track=data.academic_track,
-            registration_date=data.registration_date or date.today(),
+            registration_date=data.registration_date or today_in_tehran(),
             workspace_owner_id=self.workspace_owner_id,
             school_institute_id=self.school_institute_id,
             student_id=student.id,
@@ -1075,7 +1246,7 @@ class SchoolService:
             total_amount=total,
             amount_paid=paid_amount,
             balance_due=total - paid_amount,
-            status=self._status(total, paid_amount, data.payments),
+            status=self._status(total, paid_amount, payments),
         )
         self.session.add(enrollment)
         self.session.flush()
@@ -1106,7 +1277,7 @@ class SchoolService:
                     sayad_id=item.sayad_id,
                     status="PAID" if item.method in {"CASH", "BANK_TRANSFER"} else "PENDING",
                 )
-                for item in data.payments
+                for item in payments
             ]
         )
         if discount is not None:
@@ -1133,9 +1304,10 @@ class SchoolService:
                     "registration_date",
                     "exam_plan_id",
                     "special_support",
+                    "payment_plan",
                 }
             ),
-            registration_date=data.registration_date or date.today(),
+            registration_date=data.registration_date or today_in_tehran(),
         )
         self.session.add(student)
         self.session.flush()
@@ -1248,7 +1420,8 @@ class SchoolService:
         if data.amount > enrollment.balance_due:
             raise SchoolError("مبلغ پرداخت نمی‌تواند بیشتر از مانده شهریه باشد.")
         pending = sum(
-            (p.amount for p in enrollment.payments if p.status == "PENDING"), Decimal("0")
+            (p.amount for p in enrollment.payments if p.status in {"PENDING", "BOUNCED"}),
+            Decimal("0"),
         )
         if pending + data.amount > enrollment.balance_due:
             raise SchoolError(
@@ -1323,6 +1496,13 @@ class SchoolService:
         )
         if data.payment is not None and data.payment.amount != additional_due:
             raise SchoolError("پرداخت تغییر کلاس باید دقیقاً برابر مابه‌التفاوت قابل پرداخت باشد.")
+        if data.payment is not None and data.payment_plan is not None:
+            raise SchoolError("فقط یک برنامه پرداخت ارسال کنید.")
+        plan_parts = (
+            self._payment_parts(additional_due, data.payment_plan, today_in_tehran())
+            if data.payment_plan is not None
+            else []
+        )
         change = EnrollmentClassChange(
             enrollment_id=enrollment.id,
             changed_by_id=self.actor.id,
@@ -1357,6 +1537,8 @@ class SchoolService:
         self._refresh_balance(enrollment)
         if data.payment is not None:
             self._append_payment(enrollment, data.payment)
+        for part in plan_parts:
+            self._append_payment(enrollment, part)
         if data.excess_handling == "REFUND" and enrollment.credit_balance > 0:
             change.refund_amount = enrollment.credit_balance
             change.refund_status = "PENDING"
@@ -1587,6 +1769,29 @@ class SchoolService:
         self.session.commit()
         return self.get_student(student_id)
 
+    def replace_enrollment_plan(
+        self, student_id: UUID, enrollment_id: UUID, data: PaymentPlanReplace
+    ) -> Student:
+        enrollment = self._locked_enrollment(student_id, enrollment_id)
+        self._check_plan_version(enrollment.balance_due, enrollment.payments, data)
+        parts = self._payment_parts(enrollment.balance_due, data.plan, today_in_tehran())
+        for row in enrollment.payments:
+            if row.status in {"PENDING", "BOUNCED"}:
+                row.status = "CANCELLED"
+        for part in parts:
+            self._append_payment(enrollment, part)
+        self._refresh_balance(enrollment)
+        AuditRepository(self.session).record(
+            action="school.payment_plan.replaced",
+            resource_type="student_enrollment",
+            resource_id=str(enrollment.id),
+            actor_id=self.actor.id,
+            success=True,
+            details={"amount": str(data.expected_balance)},
+        )
+        self.session.commit()
+        return self.get_student(student_id)
+
     def change_special_support(
         self, student_id: UUID, enrollment_id: UUID, data: SupportChangeCreate
     ) -> Student:
@@ -1618,6 +1823,15 @@ class SchoolService:
         subtotal = enrollment.subtotal - old_price + new_price
         discount = min(enrollment.discount_amount, subtotal)
         new_total = subtotal - discount
+        support_plan_parts = (
+            self._payment_parts(
+                max(new_total - max(old_total, enrollment.amount_paid), Decimal("0")),
+                data.payment_plan,
+                today_in_tehran(),
+            )
+            if data.payment_plan is not None
+            else []
+        )
         change = EnrollmentSupportChange(
             enrollment_id=enrollment.id,
             changed_by_id=self.actor.id,
@@ -1639,6 +1853,8 @@ class SchoolService:
         enrollment.special_support_price = new_price
         enrollment.support_changes.append(change)
         self._refresh_balance(enrollment)
+        for part in support_plan_parts:
+            self._append_payment(enrollment, part)
         AuditRepository(self.session).record(
             action="school.support.changed",
             resource_type="student_enrollment",
@@ -1672,7 +1888,7 @@ class SchoolService:
         else:
             if cancellation.refund_amount > enrollment.credit_balance:
                 raise SchoolConflictError("اعتبار فعلی برای بازپرداخت کافی نیست.")
-            if data.paid_on is None or data.paid_on > date.today():
+            if data.paid_on is None or data.paid_on > today_in_tehran():
                 raise SchoolError("تاریخ بازپرداخت انجام‌شده نمی‌تواند در آینده باشد.")
             cancellation.refund_status, cancellation.refund_method = "PAID", data.method
             cancellation.refunded_on, cancellation.refund_tracking_code = (
@@ -1713,7 +1929,7 @@ class SchoolService:
                 raise SchoolConflictError(
                     "اعتبار فعلی برای بازپرداخت کافی نیست؛ پرونده را دوباره بررسی کنید."
                 )
-            if data.paid_on is None or data.paid_on > date.today():
+            if data.paid_on is None or data.paid_on > today_in_tehran():
                 raise SchoolError("تاریخ بازپرداخت انجام‌شده نمی‌تواند در آینده باشد.")
             change.refund_status, change.refund_method = "PAID", data.method
             change.refunded_on, change.refund_tracking_code = data.paid_on, data.tracking_code
@@ -1787,7 +2003,7 @@ class SchoolService:
         )
         if code is None or not code.is_active:
             raise SchoolError("The discount code is invalid or inactive")
-        if code.expires_on is not None and code.expires_on < date.today():
+        if code.expires_on is not None and code.expires_on < today_in_tehran():
             raise SchoolError("The discount code has expired")
         if code.max_uses is not None and code.uses_count >= code.max_uses:
             raise SchoolError("The discount code has reached its use limit")
@@ -1804,7 +2020,7 @@ class SchoolService:
         overdue = any(
             getattr(item, "status", "PENDING") == "PENDING"
             and item.due_date is not None
-            and item.due_date < date.today()
+            and item.due_date < today_in_tehran()
             for item in payments
         )
         if overdue:

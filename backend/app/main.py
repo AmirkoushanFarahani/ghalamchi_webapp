@@ -15,6 +15,7 @@ from starlette.responses import Response
 
 from backend.app.api.router import api_router
 from backend.app.core.config import Settings, get_settings
+from backend.app.core.currency import CURRENCY
 from backend.app.core.rate_limit import InMemoryRateLimiter
 from backend.app.core.request_limits import RequestBodyLimitMiddleware
 from backend.app.ml.registry import (
@@ -49,6 +50,7 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
     is_production = settings.APP_ENV.casefold() == "production"
     application = FastAPI(
         title=settings.APP_NAME,
+        description="واحد تمام مبالغ مالی در API و پایگاه داده: تومان (TOMAN).",
         version="0.2.0",
         lifespan=lifespan,
         docs_url=None if is_production else "/docs",
@@ -114,6 +116,7 @@ def create_app(settings_override: Settings | None = None) -> FastAPI:
         logger.log(level, event)
         response.headers["X-Request-ID"] = request_id
         response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Monetary-Unit"] = CURRENCY
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["Referrer-Policy"] = "no-referrer"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"

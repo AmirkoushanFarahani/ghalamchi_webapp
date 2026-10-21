@@ -6,6 +6,8 @@ import { Link } from "../routes/router";
 import { api } from "../services/api";
 import type { Enrollment, EnrollmentPayment, Student } from "../types/api";
 
+import { EnrollmentPaymentModal } from "./StudentClassActions";
+
 type RecordRow = { student: Student; enrollment: Enrollment };
 type PaymentRow = { student: Student; enrollment: Enrollment; payment: EnrollmentPayment };
 
@@ -48,6 +50,7 @@ function EditPaymentsModal({ row, close, changed }: { row: RecordRow; close: () 
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [touched, setTouched] = useState(false);
+  const [planRow, setPlanRow] = useState<RecordRow | null>(null);
   const update = async (payment: EnrollmentPayment, status: "PAID" | "BOUNCED") => {
     setBusy(payment.id);
     setError("");
@@ -62,8 +65,11 @@ function EditPaymentsModal({ row, close, changed }: { row: RecordRow; close: () 
     }
   };
   const finish = () => { if (touched) changed(); close(); };
+  async function openPlan() { setBusy("plan"); setError(""); try { const student = await api.get<Student>(`/school/students/${row.student.id}`); const enrollment = student.enrollments.find((e) => e.id === row.enrollment.id); if (enrollment) setPlanRow({ student, enrollment }); } catch (failure) { setError(failure instanceof Error ? failure.message : "دریافت پرونده ناموفق بود."); } finally { setBusy(null); } }
+  if (planRow) return <EnrollmentPaymentModal student={planRow.student} enrollment={planRow.enrollment} close={() => setPlanRow(null)} saved={() => { changed(); close(); }} />;
   return <Modal open title={`ویرایش وضعیت شهریه — ${row.student.full_name}`} onClose={finish} wide>
     {items.length ? <div className="table-wrap"><table><thead><tr><th>روش پرداخت</th><th>مبلغ</th><th>سررسید</th><th>وضعیت</th><th>تغییر وضعیت</th></tr></thead><tbody>{items.map((payment) => <tr key={payment.id}><td>{methodLabel[payment.method]}</td><td><Money value={payment.amount} /></td><td>{payment.due_date ? <DateText value={payment.due_date} /> : "—"}</td><td><StatusBadge value={payment.status} /></td><td>{payment.status === "PAID" ? "—" : <div className="button-row"><button className="button button--primary button--small" disabled={busy === payment.id} onClick={() => void update(payment, "PAID")}>وصول شد</button>{payment.status === "PENDING" && <button className="button button--secondary button--small" disabled={busy === payment.id} onClick={() => void update(payment, "BOUNCED")}>برگشت خورد</button>}</div>}</td></tr>)}</tbody></table></div> : <p>برای این پرونده پرداخت یا قسط ثبت‌شده‌ای وجود ندارد که وضعیت آن قابل تغییر باشد.</p>}
+    {Number(row.enrollment.balance_due) > 0 && <button type="button" className="button button--secondary" disabled={!!busy} onClick={() => void openPlan()}>ویرایش برنامه مانده / پرداخت ترکیبی</button>}
     <p><small>پرداخت وصول‌شده قابل تغییر نیست. با ثبت «وصول شد»، مبلغ دریافتی و مانده شهریه به‌طور خودکار به‌روز می‌شود.</small></p>
     {error && <p role="alert" className="negative">{error}</p>}
     <div className="form-actions"><button className="button button--secondary" onClick={finish}>بستن</button></div>
@@ -81,7 +87,7 @@ export function RegisteredTuitionPage() {
     return <>
       <PageHeader title="جزئیات شهریه‌های ثبت‌شده" description="فهرست کامل ثبت‌نام‌ها، مبلغ شهریه، تاریخ ثبت، وضعیت و مانده هر پرونده." action={<BackToDashboard />} />
       <section className="kpi-grid kpi-grid--3"><Metric title="تعداد پرونده‌ها" value={rows.length} count /><Metric title="جمع شهریه ثبت‌شده" value={total} tone="positive" /><Metric title="جمع دریافتی" value={collected} tone="positive" /></section>
-      {rows.length ? <section className="card"><div className="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>پایه</th><th>تاریخ ثبت</th><th>شهریه</th><th>دریافتی</th><th>مانده</th><th>وضعیت</th>{canEdit && <th>عملیات پرداخت</th>}<th>پرونده</th></tr></thead><tbody>{rows.map(({ student, enrollment }) => <tr key={enrollment.id}><td><strong>{student.full_name}</strong><small>{student.guardian_full_name}</small></td><td>{(enrollment.grade ?? student.grade).replace("GRADE_", "پایه ")}<small>{enrollment.academic_year}</small></td><td><DateText value={enrollment.registration_date ?? student.registration_date} /></td><td><Money value={enrollment.total_amount} /></td><td><Money value={enrollment.amount_paid} /></td><td><Money value={enrollment.balance_due} /></td><td><StatusBadge value={enrollment.status} /></td>{canEdit && <td>{enrollment.payments.some((payment) => payment.status !== "PAID") ? <button className="button button--secondary button--small" onClick={() => setEditing({ student, enrollment })}>ویرایش پرداخت</button> : "تسویه‌شده"}</td>}<td><Link to={`/students/${student.id}`}>مشاهده</Link></td></tr>)}</tbody></table></div></section> : <EmptyState title="شهریه ثبت‌شده‌ای وجود ندارد" detail="پس از ثبت دانش‌آموز، پرونده او در این فهرست نمایش داده می‌شود." />}
+      {rows.length ? <section className="card"><div className="table-wrap"><table><thead><tr><th>دانش‌آموز</th><th>پایه</th><th>تاریخ ثبت</th><th>شهریه</th><th>دریافتی</th><th>مانده</th><th>وضعیت</th>{canEdit && <th>عملیات پرداخت</th>}<th>پرونده</th></tr></thead><tbody>{rows.map(({ student, enrollment }) => <tr key={enrollment.id}><td><strong>{student.full_name}</strong><small>{student.guardian_full_name}</small></td><td>{(enrollment.grade ?? student.grade).replace("GRADE_", "پایه ")}<small>{enrollment.academic_year}</small></td><td><DateText value={enrollment.registration_date ?? student.registration_date} /></td><td><Money value={enrollment.total_amount} /></td><td><Money value={enrollment.amount_paid} /></td><td><Money value={enrollment.balance_due} /></td><td><StatusBadge value={enrollment.status} /></td>{canEdit && <td>{Number(enrollment.balance_due) > 0 ? <button className="button button--secondary button--small" onClick={() => setEditing({ student, enrollment })}>ویرایش پرداخت</button> : "تسویه‌شده"}</td>}<td><Link to={`/students/${student.id}`}>مشاهده</Link></td></tr>)}</tbody></table></div></section> : <EmptyState title="شهریه ثبت‌شده‌ای وجود ندارد" detail="پس از ثبت دانش‌آموز، پرونده او در این فهرست نمایش داده می‌شود." />}
       {editing && <EditPaymentsModal key={editing.enrollment.id} row={editing} close={() => setEditing(null)} changed={() => void reload()} />}
     </>;
   }}</PageState>;
